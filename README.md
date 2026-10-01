@@ -1,28 +1,28 @@
 # Interface_scanner
 
-Halaman scan dokumen untuk platform LOL Photobooth. Kamera mendeteksi kertas
-secara langsung dan memberi animasi "sedang di-scan" yang menempel di permukaan
-kertas. Hasil fotonya nanti dipotong dan diluruskan — yang tersisa hanya
-kertasnya, rata seperti hasil mesin scan.
+Halaman scan untuk platform LOL Photobooth: tamu mengarahkan kamera ke **strip
+foto** atau **QR** mereka. Kamera mendeteksi kartunya secara langsung dan
+memberi animasi "sedang di-scan" (motion **Proyeksi**, warna `#ED4835`) yang
+menempel di permukaan kartu.
 
-> **Tahap sekarang: fokus ke animasi scan.** Jepret sengaja dimatikan
-> (`CAPTURE_ENABLED = false`), dan ada beberapa pilihan motion untuk
-> dibandingkan langsung di HP.
+> **Tahap sekarang: tampilan.** Ada tutorial di awal, layar kamera layar
+> penuh dengan animasi scan, dan kalimat ajakan. Belum ada tombol jepret
+> (`CAPTURE_ENABLED = false`) dan QR belum dibaca.
 
-![Lima pilihan motion scan: piksel, termal, jejak, partikel, proyeksi](docs/demo-motions.webp)
-![Tutorial: HP disejajarkan di atas kartu, kartu menyala lalu dicentang](docs/demo-tutorial.webp)
+![Tutorial: tangan memegang HP mendekati kartu foto, kartu menyala merah lalu dicentang](docs/demo-tutorial.webp)
 
-Versi video motion: [docs/demo-motions.mp4](docs/demo-motions.mp4).
+Video: [tutorial](docs/demo-tutorial.mp4) · [perbandingan motion yang sempat dicoba](docs/demo-motions.mp4).
 
 ## Isi repo
 
 | Berkas | Untuk apa |
 | --- | --- |
-| `SCAN.html` | **Halaman yang ditempel ke CMS.** Satu blok gaya, satu `<main>` (sintaks Angular), satu blok skrip. Styling memakai Bootstrap 5.3 yang sudah dimuat platform. |
+| `SCAN.html` | **Halaman yang ditempel ke CMS.** Satu blok gaya, satu `<main>` (sintaks Angular), satu blok skrip. Styling memakai Bootstrap 5.3 yang sudah dimuat platform. Aset tutorial sudah disematkan (WebP base64), jadi tetap satu berkas. |
 | `preview.html` | Harness pengembangan (Angular → Vue), sama seperti di template Gemini. **Jangan diunggah ke platform.** |
 | `index.html` | Pengalih ke `preview.html` (untuk GitHub Pages). |
+| `assets/` | Aset tutorial dalam WebP (tangan + HP, kartu foto, bayangan) — salinan yang disematkan di `SCAN.html`. |
 | `test/` | Foto contoh untuk kamera tiruan. |
-| `docs/` | Rekaman pilihan motion (WebP animasi + MP4) dan tutorial. |
+| `docs/` | Rekaman tutorial dan motion. |
 
 ## Menjalankan
 
@@ -35,72 +35,55 @@ Di HP: buka lewat GitHub Pages repo ini (kamera HP hanya bisa lewat **https**).
 
 | Query | Gunanya |
 | --- | --- |
-| `?motion=termal` | Langsung membuka satu pilihan motion: `piksel`, `termal`, `jejak`, `partikel`, `proyeksi`. |
 | `?fake=test/kartu-meja-kayu.jpg` | Kamera tiruan dari sebuah foto (laptop tanpa kamera, pengujian). Foto lain: `kartu-alas-gelap.jpg`, `kartu-meja-putih.jpg`, `kartu-tegak.jpg` (tegak, cocok untuk ukuran HP). |
 | `&shake=2` | Besar goyangan tangan tiruan (px). |
-| `&walk` | Kertas keluar-masuk frame tiap 10 detik. |
-| `?capture` | Menyalakan alur jepret → hasil untuk dicoba, tanpa mengubah `CAPTURE_ENABLED`. |
+| `&walk` | Kartu keluar-masuk frame tiap 10 detik. |
 | `?notutorial` | Tutorial tidak muncul saat halaman dibuka (untuk pengujian). |
+| `?capture` | Menyalakan alur jepret → hasil untuk dicoba lewat `__state.capture()` di console. |
 | `?IsUpload` | Tombol "Unggah foto" di layar kamera (sama dengan halaman Gemini). |
 | `?noworker` | Menguji jalur cadangan: deteksi di thread utama. |
 
 Di console: `__state` (state halaman), `__SCAN` (mesin), `__SCAN_BUILD` (versi).
 
-## Layar kamera
-
-- Video **layar penuh** (tanpa bingkai hitam) di HP tegak/miring, tablet, dan
-  desktop; judul, tombol lampu/ganti kamera, dan tombol jepret melayang di
-  atasnya.
-- Tidak ada teks petunjuk dan tidak ada garis tepi di sekeliling kertas:
-  kertas yang terdeteksi ditandai **isian** cahaya, sekelilingnya sedikit
-  diredupkan.
-- Deret tombol di atas tombol jepret = **pilihan motion (sementara)**.
-- Tombol **?** di pojok kanan bawah membuka lagi tutorial.
-
 ## Tutorial
 
 Muncul begitu halaman dibuka (`TUTORIAL_ON_START`), di atas kamera yang
-diredupkan dan diburamkan supaya fokus. Isinya animasi garis **tanpa teks**,
-berulang terus (~5,4 detik per putaran):
+diredupkan dan diburamkan supaya fokus. Animasi garis **tanpa teks**, memakai
+aset dari tim desain (`Tutorial/Asset motion tutorial-02.png` dan `-03.png`,
+dikonversi ke WebP), berulang terus (~6,2 detik per putaran):
 
-1. kartu foto tergeletak (garisnya tergambar sendiri di putaran pertama);
-2. HP masuk dari kanan bawah dan menyesuaikan posisi sampai kartu pas di
-   layarnya — layarnya "tembus" memperlihatkan kartu di bawahnya;
-3. kartu di layar menyala merah piksel demi piksel, lalu muncul centang;
-4. HP pergi, ulang dari awal.
+1. kartu foto tergeletak, sedikit "bernapas";
+2. tangan memegang HP datang dari kanan bawah lewat lintasan melengkung, makin
+   turun mendekati kartu (skala dan bayangannya mengecil), lalu mendarat
+   dengan pegas halus;
+3. layar HP memperlihatkan kartu di bawahnya; titik cahaya "proyeksi" merah
+   menyebar dari tengah kartu lalu menyatu jadi isian;
+4. lencana centang muncul memantul;
+5. HP ancang-ancang turun sedikit, lalu terangkat pergi ke kiri atas.
 
-**Lewati** (kiri bawah) langsung menutupnya; tombol **?** membukanya lagi.
-Animasinya digerakkan `requestAnimationFrame`, bukan CSS `@keyframes`.
+Kurva geraknya cubic-bezier + pegas (seperti graph editor After Effects),
+digerakkan `requestAnimationFrame` — bukan CSS `@keyframes`, yang diam di
+platform. Supaya kartu di belakang tertutup rapi, siluet tangan + HP diisi
+gelap dan layarnya dibuat tembus pandang (diolah dari PNG aslinya).
 
-> **Ilustrasi masih sementara.** Garis HP + kartu digambar di skrip (SVG).
-> Berkas di `Tutorial/1x` (`Asset 3.png`, `Asset 4.png`) ternyata kosong —
-> semua pikselnya putih dan tidak ada transparansi, jadi garisnya hilang
-> waktu diekspor. Begitu diekspor ulang (paling bagus **SVG**, atau PNG dengan
-> latar transparan), tinggal ganti isi `drawCard()` dan bagian HP di
-> `buildTutorialArt()`; urutan animasinya tetap.
+**Lewati** ada di kanan, tepat di bawah animasinya, dan langsung menutup
+tutorial. Tombol **?** di pojok kanan bawah layar kamera membukanya lagi.
 
-## Pilihan motion
+## Layar kamera
 
-Semua efek digambar satu shader WebGL yang memetakan tiap piksel layar balik
-ke permukaan kertas (homografi), jadi animasinya menempel di kertas sungguhan
-dan ikut miring. Hanya isian, satu warna: **`#ED4835`** (bagian paling terang
-mendekati putih panas). Tiap kali kertas terdeteksi atau motion diganti,
-isiannya "muncul" dulu: petak-petak kecil timbul acak dalam ~0,6 detik.
+- Video **layar penuh** (tanpa bingkai hitam) di HP tegak/miring, tablet, dan
+  desktop. Tidak ada judul dan tidak ada tombol jepret.
+- Kartu yang terdeteksi diberi animasi **Proyeksi**: matriks titik halftone
+  yang ukurannya mengikuti interferensi dua gelombang — seperti cahaya
+  terstruktur pada mesin scan 3D. Hanya isian, tanpa garis tepi, warna
+  `#ED4835`; sekelilingnya sedikit diredupkan. Animasinya digambar shader WebGL
+  yang memetakan tiap piksel layar balik ke permukaan kartu, jadi ikut miring
+  bersama kartunya.
+- Di bawah ada ajakan **"Scan strip foto atau QR kamu"** (`copy.prompt`), dan
+  tombol **?** di kanan bawah.
 
-| Motion | Gerakannya |
-| --- | --- |
-| **Piksel** | Kertas dipecah jadi piksel yang menyala acak, berkelompok mengikuti medan yang bergeser; tiap ±5 detik semua piksel menyala serempak — momen kertas "terdigitalkan". |
-| **Termal** | Medan panas yang mengalir pelan, dibagi beberapa tingkat isian seperti kamera termal. |
-| **Jejak** | Dua titik cahaya menelusuri seluruh kertas (lintasan Lissajous) dan meninggalkan jejak yang memudar — seperti kepala pembaca. |
-| **Partikel** | Kawanan partikel yang berkelip, sesekali berpusar merapat ke tengah lalu menyebar lagi. |
-| **Proyeksi** | Matriks titik halftone yang ukurannya mengikuti interferensi dua gelombang — seperti cahaya terstruktur pada mesin scan 3D. |
-
-Setelah satu dipilih: isi `MOTION_DEFAULT` di skrip dengan key-nya, lalu hapus
-`div.scn-motions` di markup. Shader untuk motion yang tidak dipakai boleh ikut
-dihapus (fungsi `fx…` di `LIGHT_FRAG`).
-
-Kalau perangkat meminta animasi dikurangi (`prefers-reduced-motion`), efeknya
-berhenti di satu bingkai. Kalau WebGL tidak tersedia, kertas cukup diberi isian
+Kalau perangkat meminta animasi dikurangi (`prefers-reduced-motion`), animasi
+berhenti di satu bingkai. Kalau WebGL tidak tersedia, kartu cukup diberi isian
 warna polos.
 
 ## Alur lengkap (saat jepret dinyalakan lagi)
@@ -179,16 +162,15 @@ Semua ada di region **KONFIGURASI** paling atas di skrip `SCAN.html`.
 | Nama | Isi |
 | --- | --- |
 | `BUILD` | Naikkan setiap kali berkas diubah, lalu cek `__SCAN_BUILD` di halaman live. |
-| `ACCENT` | Warna cahaya scan dan aksen tombol pilihan (`#ED4835`). |
-| `CAPTURE_ENABLED` | `false` = tombol jepret belum memotret (tahap animasi). |
+| `ACCENT` | Warna cahaya scan dan aksen (`#ED4835`). |
+| `CAPTURE_ENABLED` | `false` = belum ada jepret di tahap ini. |
 | `TUTORIAL_ON_START` | Tutorial muncul saat halaman dibuka. |
-| `MOTION_DEFAULT`, `this.motions` | Motion yang dipakai dan daftar pilihannya. |
 | `SCANIC_URL`, `ML_OPTIONS` | Library deteksi. Untuk host sendiri: salin `dist/` scanic dan paket `scanic-ml` ke S3 (CORS `*`), lalu arahkan ke sana (`ML_OPTIONS.assetBaseUrl`). |
 | `DOC_RATIO` | `"auto"` atau angka lebar / tinggi (`210 / 297` A4, `148 / 210` A5, `4 / 6` 4R). |
 | `CAMERA_IDEAL` | Resolusi kamera yang diminta (bawaan 4K; browser memilih yang terdekat). |
 | `OUTPUT_MAX`, `JPEG_QUALITY`, `DEFAULT_FILTER` | Ukuran, kualitas, dan tampilan awal hasil. |
 | `ON_SCAN_READY` | Kait yang dipanggil setiap hasil siap — tempat mengirim hasil ke server, Gemini, atau cetak. |
-| `this.copy`, `this.labels` | Semua tulisan di layar. |
+| `this.copy`, `this.labels` | Semua tulisan di layar, termasuk ajakan `copy.prompt`. |
 
 Di region **Penyetelan**: `OUTSIDE_DIM` (gelapnya area di luar kertas) dan
 `LIGHT_SCALE_MAX` (resolusi kanvas cahaya).
@@ -210,8 +192,10 @@ Sama dengan template Gemini:
 
 ## Belum ada / langkah berikutnya
 
-- Pilih satu motion, lalu rancang reaksi saat kertas ditahan / dijepret untuk
-  motion itu, dan nyalakan lagi `CAPTURE_ENABLED`.
+- **Membaca QR** (ajakannya sudah menyebut QR): bisa memakai BarcodeDetector
+  bawaan Chrome Android, dengan pustaka cadangan untuk iPhone.
+- Rancang reaksi saat strip foto / QR berhasil terbaca, lalu tentukan alur
+  sesudahnya (nyalakan lagi `CAPTURE_ENABLED` kalau perlu jepret).
 - **Mode booth DSLR** (jembatan LOLBooth): foto Canon tinggal dilewatkan ke jalur
   yang sama dengan "Unggah foto" (deteksi → luruskan → hasil).
 - **Unggah ke platform + QR**: sambungkan `ON_SCAN_READY` ke alur unggah dari
