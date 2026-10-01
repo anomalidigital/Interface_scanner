@@ -6,12 +6,15 @@ memberi animasi "sedang di-scan" (motion **Proyeksi**, warna `#ED4835`) yang
 menempel di permukaan kartu.
 
 > **Tahap sekarang: tampilan.** Ada tutorial di awal, layar kamera layar
-> penuh dengan animasi scan, dan kalimat ajakan. Belum ada tombol jepret
-> (`CAPTURE_ENABLED = false`) dan QR belum dibaca.
+> penuh dengan animasi scan, kalimat ajakan, dan momen "scan berhasil"
+> (gambar membeku + loading). Loading-nya masih simulasi, belum ada proses
+> sungguhan, dan QR belum dibaca.
 
 ![Tutorial: tangan memegang HP mendekati kartu foto, kartu menyala merah lalu dicentang](docs/demo-tutorial.webp)
 
-Video: [tutorial](docs/demo-tutorial.mp4) · [perbandingan motion yang sempat dicoba](docs/demo-motions.mp4).
+![Scan berhasil: gambar kamera membeku, animasi tetap jalan di kartu, loading di bawah](docs/demo-scan-loading.webp)
+
+Video: [tutorial](docs/demo-tutorial.mp4) · [scan berhasil + loading](docs/demo-scan-loading.mp4) · [perbandingan motion yang sempat dicoba](docs/demo-motions.mp4).
 
 ## Isi repo
 
@@ -72,7 +75,8 @@ tutorial. Tombol **?** di pojok kanan bawah layar kamera membukanya lagi.
 ## Layar kamera
 
 - Video **layar penuh** (tanpa bingkai hitam) di HP tegak/miring, tablet, dan
-  desktop. Tidak ada judul dan tidak ada tombol jepret.
+  desktop. Tidak ada judul, tidak ada tombol jepret, dan tidak ada tombol di
+  kanan atas (lampu kilat dan ganti kamera sudah dihapus).
 - Kartu yang terdeteksi diberi animasi **Proyeksi**: matriks titik halftone
   yang ukurannya mengikuti interferensi dua gelombang — seperti cahaya
   terstruktur pada mesin scan 3D. Hanya isian, tanpa garis tepi, warna
@@ -81,6 +85,23 @@ tutorial. Tombol **?** di pojok kanan bawah layar kamera membukanya lagi.
   bersama kartunya.
 - Di bawah ada ajakan **"Scan strip foto atau QR kamu"** (`copy.prompt`), dan
   tombol **?** di kanan bawah.
+
+### Scan berhasil
+
+Scan dianggap berhasil kalau kartunya cukup besar (≥ 10% frame) dan diam
+selama `HOLD_MS` (1,2 detik). Saat itu:
+
+1. gambar kamera **membeku** (video dijeda), animasi Proyeksi tetap bergerak
+   di atas kartu, jadi terasa sedang diproses;
+2. ajakan di bawah berganti jadi **loading sederhana**: lingkaran berputar +
+   "Memproses…" (`copy.loading`); tombol **?** disembunyikan dulu;
+3. sesudah `LOADING_DEMO_MS` (3,5 detik, **simulasi**) kamera jalan lagi.
+   Kartu yang sama baru bisa terbaca lagi setelah diangkat, atau setelah
+   5 detik.
+
+Frame yang dibekukan disimpan di `__SCAN.still` dan sudut kartunya di
+`__SCAN.corners`. Saat proses sungguhan sudah ada, ganti bagian "tunggu
+proses" di `scanSuccess()` (region **Berhasil scan**) dengan permintaannya.
 
 Kalau perangkat meminta animasi dikurangi (`prefers-reduced-motion`), animasi
 berhenti di satu bingkai. Kalau WebGL tidak tersedia, kartu cukup diberi isian
@@ -163,17 +184,21 @@ Semua ada di region **KONFIGURASI** paling atas di skrip `SCAN.html`.
 | --- | --- |
 | `BUILD` | Naikkan setiap kali berkas diubah, lalu cek `__SCAN_BUILD` di halaman live. |
 | `ACCENT` | Warna cahaya scan dan aksen (`#ED4835`). |
-| `CAPTURE_ENABLED` | `false` = belum ada jepret di tahap ini. |
+| `CAPTURE_ENABLED` | `false` = alur jepret → hasil belum dipakai di tahap ini. |
+| `HOLD_MS` | Berapa lama kartu harus diam sebelum scan dianggap berhasil (bawaan 1200 ms). |
+| `LOADING_DEMO_MS` | Lama loading simulasi sesudah scan berhasil (bawaan 3500 ms). |
 | `TUTORIAL_ON_START` | Tutorial muncul saat halaman dibuka. |
 | `SCANIC_URL`, `ML_OPTIONS` | Library deteksi. Untuk host sendiri: salin `dist/` scanic dan paket `scanic-ml` ke S3 (CORS `*`), lalu arahkan ke sana (`ML_OPTIONS.assetBaseUrl`). |
 | `DOC_RATIO` | `"auto"` atau angka lebar / tinggi (`210 / 297` A4, `148 / 210` A5, `4 / 6` 4R). |
 | `CAMERA_IDEAL` | Resolusi kamera yang diminta (bawaan 4K; browser memilih yang terdekat). |
 | `OUTPUT_MAX`, `JPEG_QUALITY`, `DEFAULT_FILTER` | Ukuran, kualitas, dan tampilan awal hasil. |
 | `ON_SCAN_READY` | Kait yang dipanggil setiap hasil siap — tempat mengirim hasil ke server, Gemini, atau cetak. |
-| `this.copy`, `this.labels` | Semua tulisan di layar, termasuk ajakan `copy.prompt`. |
+| `this.copy`, `this.labels` | Semua tulisan di layar, termasuk ajakan `copy.prompt` dan `copy.loading`. |
 
-Di region **Penyetelan**: `OUTSIDE_DIM` (gelapnya area di luar kertas) dan
-`LIGHT_SCALE_MAX` (resolusi kanvas cahaya).
+Di region **Penyetelan**: `OUTSIDE_DIM` (gelapnya area di luar kertas),
+`LIGHT_SCALE_MAX` (resolusi kanvas cahaya), `AUTO_MIN_AREA`,
+`STEADY_TOLERANCE`, dan `REARM_MS` (kapan scan dianggap berhasil dan kapan
+boleh scan lagi).
 
 ## Aturan platform yang diikuti
 
@@ -194,8 +219,8 @@ Sama dengan template Gemini:
 
 - **Membaca QR** (ajakannya sudah menyebut QR): bisa memakai BarcodeDetector
   bawaan Chrome Android, dengan pustaka cadangan untuk iPhone.
-- Rancang reaksi saat strip foto / QR berhasil terbaca, lalu tentukan alur
-  sesudahnya (nyalakan lagi `CAPTURE_ENABLED` kalau perlu jepret).
+- Ganti loading simulasi dengan proses sungguhan, lalu tentukan layar
+  sesudahnya. Animasi tutorial bisa disesuaikan setelah alur loading final.
 - **Mode booth DSLR** (jembatan LOLBooth): foto Canon tinggal dilewatkan ke jalur
   yang sama dengan "Unggah foto" (deteksi → luruskan → hasil).
 - **Unggah ke platform + QR**: sambungkan `ON_SCAN_READY` ke alur unggah dari
