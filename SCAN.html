@@ -6,26 +6,24 @@
 
    Bootstrap 5.3 (sudah dimuat platform) dipakai untuk tombol, grup tombol,
    dan utilitas jarak/flex. Aturan di bawah ini hanya untuk yang memang tidak
-   ada di Bootstrap: layar penuh ala aplikasi kamera, kotak kamera, tombol
-   jepret, dan permukaan kaca.
+   ada di Bootstrap: kamera layar penuh, kontrol yang melayang di atas
+   gambar, tombol jepret, dan permukaan kaca.
 
    Semua class diawali "scn-" supaya tidak bentrok dengan tema platform.
 
-   Efek cahaya scan TIDAK ada di sini. Semuanya digambar JS di kanvas (region
-   "Lapisan cahaya" di skrip), karena animasi CSS @keyframes dan [ngStyle] di
-   dalam layar *ngIf terbukti diam di platform ini (lihat catatan template
-   Gemini).
+   Efek cahaya scan TIDAK ada di sini. Semuanya digambar WebGL di kanvas
+   (region "Lapisan cahaya" di skrip), karena animasi CSS @keyframes dan
+   [ngStyle] di dalam layar *ngIf terbukti diam di platform ini (lihat
+   catatan template Gemini).
    ========================================================================== */
 
 .scn-host {
   --scn-ink: #000;
   --scn-paper: #fff;
-  --scn-mist: rgba(255, 255, 255, 0.66);
-  --scn-glass: rgba(30, 30, 36, 0.58);
-  --scn-line: rgba(255, 255, 255, 0.14);
-  --scn-violet: #7c5cff;
-  --scn-blue: #3e8bff;
-  --scn-mint: #34e3c4;
+  --scn-mist: rgba(255, 255, 255, 0.72);
+  --scn-glass: rgba(22, 22, 26, 0.48);
+  --scn-line: rgba(255, 255, 255, 0.16);
+  --scn-accent: #ed4835;
   --scn-font: "Poppins", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
   --scn-safe-t: env(safe-area-inset-top, 0px);
   --scn-safe-r: env(safe-area-inset-right, 0px);
@@ -71,7 +69,7 @@ body {
 
 .scn-host :focus-visible,
 .scn-host .btn:focus-visible {
-  outline: 2px solid var(--scn-blue);
+  outline: 2px solid var(--scn-accent);
   outline-offset: 3px;
   box-shadow: none;
 }
@@ -111,12 +109,12 @@ body {
 }
 
 /* --------------------------------------------------------------------------
-   Kamera
+   Kamera — layar penuh. Video mengisi seluruh layar (cover), judul dan
+   kontrol melayang di atasnya dengan bayangan gradasi supaya tetap terbaca.
    -------------------------------------------------------------------------- */
 .scn-stage {
-  position: relative;
-  flex: 1 1 auto;
-  min-height: 0;
+  position: absolute;
+  inset: 0;
   overflow: hidden;
   background: #000;
   isolation: isolate;
@@ -127,30 +125,23 @@ body {
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
   background: #000;
 }
 
-.scn-hint {
+.scn-camera > .scn-bar {
   position: absolute;
-  z-index: 2;
-  top: 0.875rem;
-  left: 50%;
-  transform: translateX(-50%);
-  max-width: calc(100% - 2rem);
-  padding: 0.5rem 1.05rem;
-  border: 1px solid var(--scn-line);
-  border-radius: 999px;
-  background: var(--scn-glass);
-  -webkit-backdrop-filter: blur(16px) saturate(150%);
-  backdrop-filter: blur(16px) saturate(150%);
-  font-size: 0.9375rem;
-  font-weight: 500;
-  line-height: 1.35;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  z-index: 3;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding-bottom: 1.75rem;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0));
   pointer-events: none;
+}
+
+.scn-camera > .scn-bar > * {
+  pointer-events: auto;
 }
 
 .scn-state {
@@ -174,12 +165,30 @@ body {
 }
 
 .scn-controls {
-  flex: none;
+  position: absolute;
+  z-index: 3;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 3rem max(1.25rem, var(--scn-safe-r)) calc(1.25rem + var(--scn-safe-b)) max(1.25rem, var(--scn-safe-l));
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0));
+  pointer-events: none;
+}
+
+.scn-controls > * {
+  pointer-events: auto;
+}
+
+.scn-controls__row {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 1rem;
-  padding: 1.125rem max(1.25rem, var(--scn-safe-r)) calc(1.125rem + var(--scn-safe-b)) max(1.25rem, var(--scn-safe-l));
+  width: min(100%, 34rem);
 }
 
 .scn-side {
@@ -218,6 +227,44 @@ body {
 
 .scn-shutter:disabled {
   opacity: 0.35;
+}
+
+/* Pilihan motion (SEMENTARA — untuk membandingkan animasi di HP) */
+.scn-host .scn-motions {
+  display: flex;
+  gap: 0.125rem;
+  max-width: 100%;
+  padding: 0.25rem;
+  overflow-x: auto;
+  border: 1px solid var(--scn-line);
+  border-radius: 999px;
+  background: var(--scn-glass);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  backdrop-filter: blur(16px) saturate(150%);
+  scrollbar-width: none;
+}
+
+.scn-host .scn-motions::-webkit-scrollbar {
+  display: none;
+}
+
+.scn-host .scn-motions > .btn {
+  --bs-btn-color: var(--scn-mist);
+  --bs-btn-bg: transparent;
+  --bs-btn-border-color: transparent;
+  --bs-btn-hover-color: var(--scn-paper);
+  --bs-btn-hover-bg: transparent;
+  --bs-btn-hover-border-color: transparent;
+  --bs-btn-active-color: #fff;
+  --bs-btn-active-bg: var(--scn-accent);
+  --bs-btn-active-border-color: var(--scn-accent);
+  --bs-btn-padding-x: 0.8rem;
+  --bs-btn-padding-y: 0.45rem;
+  --bs-btn-font-size: 0.8125rem;
+  --bs-btn-font-weight: 500;
+  --bs-btn-border-radius: 999px;
+  flex: none;
+  white-space: nowrap;
 }
 
 /* --------------------------------------------------------------------------
@@ -296,21 +343,6 @@ body {
   flex: none;
   width: 1.125rem;
   height: 1.125rem;
-}
-
-/* Penanda "Otomatis": cincin kosong = mati, titik spektral = menyala */
-.scn-dot {
-  flex: none;
-  width: 0.5rem;
-  height: 0.5rem;
-  border: 1.5px solid rgba(255, 255, 255, 0.7);
-  border-radius: 50%;
-}
-
-.is-on > .scn-dot {
-  border: 0;
-  background: linear-gradient(135deg, var(--scn-mint), var(--scn-blue) 55%, var(--scn-violet));
-  box-shadow: 0 0 0.6rem rgba(62, 139, 255, 0.95);
 }
 
 /* --------------------------------------------------------------------------
@@ -424,15 +456,7 @@ body {
     font-size: 1.125rem;
   }
 
-  .scn-camera .scn-stage {
-    margin: 0 1.5rem;
-    border-radius: 1.75rem;
-  }
-
   .scn-controls {
-    width: min(100%, 34rem);
-    margin: 0 auto;
-    padding-top: 1.5rem;
     padding-bottom: calc(1.75rem + var(--scn-safe-b));
   }
 
@@ -466,7 +490,8 @@ body {
 }
 
 /* --------------------------------------------------------------------------
-   Ponsel miring (layar pendek): kontrol pindah ke sisi kanan
+   Ponsel miring (layar pendek): kontrol pindah ke sisi kanan, pilihan
+   motion ke kiri bawah
    -------------------------------------------------------------------------- */
 @media (orientation: landscape) and (max-height: 540px) {
   .scn-bar {
@@ -479,38 +504,37 @@ body {
     font-size: 1rem;
   }
 
-  .scn-camera {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-rows: auto minmax(0, 1fr);
-  }
-
   .scn-camera > .scn-bar {
-    grid-column: 1 / -1;
+    padding-bottom: 1.25rem;
   }
 
-  .scn-camera .scn-stage {
-    grid-column: 1;
-    grid-row: 2;
-    margin: 0 0 0.75rem max(0.75rem, var(--scn-safe-l));
-    border-radius: 1rem;
+  .scn-controls {
+    top: 0;
+    left: auto;
+    flex-direction: row;
+    padding: 0 max(1rem, var(--scn-safe-r)) 0 2.5rem;
+    background: linear-gradient(to left, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0));
   }
 
-  .scn-camera .scn-controls {
-    grid-column: 2;
-    grid-row: 2;
+  .scn-controls__row {
+    width: auto;
+    height: 100%;
     grid-template-columns: auto;
     grid-template-rows: 1fr auto 1fr;
     justify-items: center;
     gap: 0.75rem;
-    width: auto;
-    margin: 0;
-    padding: 0 max(1rem, var(--scn-safe-r)) calc(0.75rem + var(--scn-safe-b)) 1rem;
   }
 
-  .scn-camera .scn-side,
-  .scn-camera .scn-side--end {
+  .scn-side,
+  .scn-side--end {
     justify-content: center;
+  }
+
+  .scn-host .scn-motions {
+    position: fixed;
+    left: max(1rem, var(--scn-safe-l));
+    bottom: calc(0.75rem + var(--scn-safe-b));
+    max-width: calc(100% - 9rem);
   }
 
   .scn-split {
@@ -547,27 +571,14 @@ body {
 
 <main class="scn-host" data-bs-theme="dark">
   <!-- ==========================================================
-       LAYAR 1 · KAMERA
-       Cahaya scan digambar JS di atas video: kanvas .scn-layer
-       disisipkan ke #scnStage, bukan ditulis di markup ini.
+       LAYAR 1 · KAMERA (layar penuh)
+       Video mengisi seluruh layar; judul dan tombol melayang di
+       atasnya. Cahaya scan digambar WebGL di kanvas .scn-layer yang
+       disisipkan JS ke #scnStage, bukan ditulis di markup ini.
        ========================================================== -->
   <section class="scn-screen scn-camera" *ngIf="screen === 'camera'">
-    <header class="scn-bar">
-      <h1 class="scn-title">{{ copy.cameraTitle }}</h1>
-      <div class="d-flex align-items-center gap-2">
-        <button type="button" class="btn scn-glass scn-round" *ngIf="torchAvailable" [ngClass]="{ 'is-on': torchOn }" [attr.aria-pressed]="torchOn" [attr.aria-label]="labels.torch" (click)="toggleTorch()">
-          <svg class="scn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4.5 13.5H11L10 22l8.5-11.5H12z" /></svg>
-        </button>
-        <button type="button" class="btn scn-glass scn-round" *ngIf="hasManyCameras" [disabled]="isBusy" [attr.aria-label]="labels.switchCamera" (click)="switchCamera()">
-          <svg class="scn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5A8 8 0 0 1 18.5 6" /><path d="M19 2.5V6.5H15" /><path d="M20 14.5A8 8 0 0 1 5.5 18" /><path d="M5 21.5V17.5H9" /></svg>
-        </button>
-      </div>
-    </header>
-
     <div class="scn-stage" id="scnStage">
       <video id="scnVideo" class="scn-video" autoplay playsinline muted></video>
-
-      <p class="scn-hint" role="status" aria-live="polite" *ngIf="cameraState !== 'error'">{{ hint }}</p>
 
       <div class="scn-state" *ngIf="cameraState === 'error'">
         <p>{{ cameraMessage }}</p>
@@ -581,22 +592,39 @@ body {
       </div>
     </div>
 
+    <header class="scn-bar">
+      <h1 class="scn-title">{{ copy.cameraTitle }}</h1>
+      <div class="d-flex align-items-center gap-2">
+        <button type="button" class="btn scn-glass scn-round" *ngIf="torchAvailable" [ngClass]="{ 'is-on': torchOn }" [attr.aria-pressed]="torchOn" [attr.aria-label]="labels.torch" (click)="toggleTorch()">
+          <svg class="scn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4.5 13.5H11L10 22l8.5-11.5H12z" /></svg>
+        </button>
+        <button type="button" class="btn scn-glass scn-round" *ngIf="hasManyCameras" [disabled]="isBusy" [attr.aria-label]="labels.switchCamera" (click)="switchCamera()">
+          <svg class="scn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5A8 8 0 0 1 18.5 6" /><path d="M19 2.5V6.5H15" /><path d="M20 14.5A8 8 0 0 1 5.5 18" /><path d="M5 21.5V17.5H9" /></svg>
+        </button>
+      </div>
+    </header>
+
     <footer class="scn-controls">
-      <div class="scn-side">
-        <!-- Hanya muncul dengan query ?IsUpload, sama seperti halaman Gemini. -->
-        <label class="btn scn-glass mb-0" *ngIf="isEnableUpload && cameraState !== 'error'">
-          <input type="file" accept="image/*" class="d-none" (change)="onUpload($event)" />
-          <svg class="scn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V4" /><path d="m7 9 5-5 5 5" /><path d="M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3" /></svg>
-          <span>{{ labels.upload }}</span>
-        </label>
+      <!-- PILIHAN MOTION — SEMENTARA, untuk membandingkan animasi scan di HP.
+           Setelah satu dipilih: isi MOTION_DEFAULT di skrip, lalu hapus div
+           ini. -->
+      <div class="scn-motions" role="group" [attr.aria-label]="labels.motionGroup" *ngIf="cameraState !== 'error'">
+        <button type="button" class="btn" *ngFor="let item of motions" [ngClass]="{ 'active': motion === item.key }" [attr.aria-pressed]="motion === item.key" (click)="setMotion(item.key)">{{ item.label }}</button>
       </div>
 
-      <button type="button" class="scn-shutter" [disabled]="cameraState !== 'ready' || isBusy" [attr.aria-label]="labels.shutter" (click)="capture()"><span></span></button>
+      <div class="scn-controls__row">
+        <div class="scn-side">
+          <!-- Hanya muncul dengan query ?IsUpload, sama seperti halaman Gemini. -->
+          <label class="btn scn-glass mb-0" *ngIf="isEnableUpload && cameraState !== 'error'">
+            <input type="file" accept="image/*" class="d-none" (change)="onUpload($event)" />
+            <svg class="scn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V4" /><path d="m7 9 5-5 5 5" /><path d="M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3" /></svg>
+            <span>{{ labels.upload }}</span>
+          </label>
+        </div>
 
-      <div class="scn-side scn-side--end">
-        <button type="button" class="btn scn-glass" *ngIf="cameraState !== 'error'" [ngClass]="{ 'is-on': autoCapture }" [attr.aria-pressed]="autoCapture" (click)="toggleAuto()">
-          <span class="scn-dot"></span>{{ labels.auto }}
-        </button>
+        <button type="button" class="scn-shutter" [disabled]="cameraState !== 'ready' || isBusy" [attr.aria-label]="labels.shutter" (click)="capture()"><span></span></button>
+
+        <div class="scn-side scn-side--end"></div>
       </div>
     </footer>
   </section>
@@ -673,6 +701,8 @@ body {
    INTERFACE SCANNER — skrip halaman
 
    Alur layar:  camera -> result   (result -> adjust -> result)
+   SEMENTARA: jepret dimatikan (CAPTURE_ENABLED) — fokus ke animasi scan di
+   layar kamera, dengan beberapa pilihan motion untuk dibandingkan.
 
    Deteksi kertas memakai scanic (MIT), dimuat saat halaman dibuka lewat
    import() dari jsDelivr, jadi tidak perlu build atau berkas tambahan.
@@ -689,15 +719,38 @@ body {
    - nama kedua tag itu tidak pernah ditulis utuh di komentar;
    - semua this.* dipasang sinkron sebelum await pertama;
    - state yang diubah dari callback async dibungkus this.zone.run;
-   - tidak ada animasi CSS @keyframes / [ngStyle]. Cahaya scan digambar di
-     kanvas lewat requestAnimationFrame, transisi besar memakai Web
+   - tidak ada animasi CSS @keyframes / [ngStyle]. Cahaya scan digambar
+     shader WebGL lewat requestAnimationFrame, transisi besar memakai Web
      Animations API (element.animate) pada elemen buatan JS.
    ========================================================================= */
 this.pageMain = async () => {
   //#region KONFIGURASI  <<< YANG BIASANYA DIUBAH ADA DI SINI
   /* Naikkan tiap kali berkas ini diubah. Cek versi yang sedang live dari
      console halaman: window.__SCAN_BUILD */
-  const BUILD = "scan-261001-1";
+  const BUILD = "scan-261001-2";
+
+  const query = this.activatedRoute?.snapshot?.queryParams ?? {};
+
+  /* Warna cahaya scan (juga aksen tombol pilihan motion). */
+  const ACCENT = "#ED4835";
+
+  /* SEMENTARA MATI — fokus ke animasi scan dulu, kamera belum menjepret.
+     Ubah ke true kalau alur jepret -> hasil mau dinyalakan lagi. Untuk
+     mencobanya tanpa mengubah berkas: tambahkan ?capture di URL. */
+  const CAPTURE_ENABLED = false;
+
+  /* PILIHAN MOTION — SEMENTARA, untuk membandingkan animasi scan di HP.
+     Setelah satu dipilih: isi MOTION_DEFAULT dengan key-nya, lalu hapus
+     deret tombol .scn-motions di markup. Bisa juga dipilih lewat URL,
+     misalnya ?motion=termal */
+  const MOTION_DEFAULT = "piksel";
+  this.motions = [
+    { key: "piksel", label: "Piksel" },
+    { key: "termal", label: "Termal" },
+    { key: "jejak", label: "Jejak" },
+    { key: "partikel", label: "Partikel" },
+    { key: "proyeksi", label: "Proyeksi" },
+  ];
 
   /* Library deteksi. Versinya dikunci supaya perilakunya tidak berubah
      diam-diam. Mau host sendiri: salin folder dist/ scanic ke S3 (CORS *),
@@ -715,10 +768,6 @@ this.pageMain = async () => {
      di foto. Isi angka kalau kertasnya dicetak sendiri — hasilnya paling
      presisi. */
   const DOC_RATIO = "auto";
-
-  /* Jepret otomatis: kertas harus diam selama HOLD_MS. */
-  const AUTO_CAPTURE_DEFAULT = true;
-  const HOLD_MS = 1400;
 
   /* Resolusi kamera yang diminta. Browser memilih yang terdekat yang
      didukung perangkat; makin besar makin tajam tulisan di hasil scan. */
@@ -740,12 +789,6 @@ this.pageMain = async () => {
     resultTitle: "Hasil scan",
     adjustTitle: "Atur sudut",
     adjustHint: "Geser titik di tiap sudut sampai pas dengan tepi kertas.",
-    hintLoading: "Menyiapkan kamera…",
-    hintSearch: "Arahkan kamera ke kertas",
-    hintCloser: "Dekatkan kamera ke kertas",
-    hintHold: "Tahan posisi sebentar",
-    hintTap: "Tekan tombol untuk memotret",
-    hintWorking: "Merapikan hasil scan…",
     saved: "Tersimpan",
     errInsecure: "Kamera hanya bisa dibuka lewat https.",
     errDenied: "Akses kamera diblokir. Izinkan kamera di browser, lalu coba lagi.",
@@ -756,11 +799,11 @@ this.pageMain = async () => {
 
   this.labels = {
     shutter: "Ambil foto",
-    auto: "Otomatis",
     upload: "Unggah foto",
     torch: "Lampu kilat",
     switchCamera: "Ganti kamera",
     tryAgain: "Coba lagi",
+    motionGroup: "Pilihan animasi scan",
     filterGroup: "Tampilan hasil",
     rotate: "Putar",
     adjust: "Atur sudut",
@@ -777,37 +820,36 @@ this.pageMain = async () => {
   ];
   //#endregion
 
-  //#region Penyetelan deteksi (jarang perlu diubah)
+  //#region Penyetelan (jarang perlu diubah)
   const DETECT_SIZE = 384; // sisi terpanjang frame untuk deteksi live (px)
   const PRECISE_SIZE = 1024; // ukuran foto untuk deteksi ulang saat jepret
   const DETECT_GAP_MS = 80; // jeda minimum antar deteksi live
-  const STEADY_TOLERANCE = 0.016; // geseran sudut maks (proporsi diagonal frame) yang masih dianggap diam
   const MIN_AREA = 0.06; // kertas minimal 6% frame supaya dianggap ketemu
-  const AUTO_MIN_AREA = 0.14; // ... dan 14% frame sebelum boleh dijepret otomatis
   const HITS_TO_LOCK = 2; // deteksi berturut-turut sebelum cahaya muncul
   const MISSES_TO_LOSE = 4; // deteksi gagal berturut-turut sebelum cahaya hilang
   const STILL_MAX = 4096; // foto unggahan dikecilkan ke ukuran ini
   const EDGE_TRIM_PX = 3; // tepi hasil dipangkas sekian piksel (foto asli) supaya tidak ada garis latar
+  const LIGHT_SCALE_MAX = 1.5; // resolusi kanvas cahaya maks (x piksel CSS); efeknya lembut, tidak perlu resolusi penuh
+  const OUTSIDE_DIM = 0.38; // gelapnya area di luar kertas saat kertas terdeteksi (0-1)
   //#endregion
 
   //#region State
-  const query = this.activatedRoute?.snapshot?.queryParams ?? {};
-
   this.screen = "camera"; // camera | result | adjust
   this.cameraState = "loading"; // loading | ready | error
   this.cameraMessage = "";
-  this.hint = this.copy.hintLoading;
-  this.autoCapture = AUTO_CAPTURE_DEFAULT;
   this.isBusy = false;
   this.revealing = false;
   this.canAdjust = false;
   this.hasManyCameras = false;
   this.torchAvailable = false;
   this.torchOn = false;
+  this.motion = this.motions.some((m) => m.key === query.motion) ? query.motion : MOTION_DEFAULT;
   this.filter = DEFAULT_FILTER;
   this.resultUrl = "";
   this.toast = "";
   this.isEnableUpload = ["IsUpload", "isUpload", "isEnableUpload"].some((key) => key in query);
+
+  const CAN_CAPTURE = CAPTURE_ENABLED || "capture" in query;
 
   /* Semua yang bukan untuk template (stream, kanvas, library) disimpan di
      sini, BUKAN di this, supaya tidak ikut dipantau change detection dan
@@ -828,8 +870,10 @@ this.pageMain = async () => {
     wasRunning: false,
     raf: 0,
     layer: null,
+    gl: null,
+    glBroken: false,
     ctx: null,
-    dpr: 1,
+    scale: 1,
     orphan: 0,
     lastNow: 0,
     detecting: false,
@@ -843,10 +887,7 @@ this.pageMain = async () => {
     shown: null,
     alpha: 0,
     lockAt: 0,
-    anchor: null,
-    steadySince: 0,
-    bigEnough: false,
-    progress: 0,
+    aspect: 0,
     frozen: false,
     still: null,
     corners: null,
@@ -864,7 +905,6 @@ this.pageMain = async () => {
 
   //#region Utilitas
   const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
-  const easeOut = (t) => 1 - Math.pow(1 - t, 3);
   const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
   const nextFrame = () => new Promise((resolve) => requestAnimationFrame(() => resolve()));
   const nextFrames = async (n) => {
@@ -910,10 +950,6 @@ this.pageMain = async () => {
       img.onerror = reject;
       img.src = url;
     });
-
-  const setHint = (text) => {
-    if (this.hint !== text) ui(() => (this.hint = text));
-  };
 
   let toastTimer = 0;
   const showToast = (text) => {
@@ -1012,6 +1048,18 @@ this.pageMain = async () => {
       h = (dx1 * sy - sx * dy1) / den;
     }
     return [p1.x - p0.x + g * p1.x, p3.x - p0.x + h * p3.x, p0.x, p1.y - p0.y + g * p1.y, p3.y - p0.y + h * p3.y, p0.y, g, h];
+  };
+
+  /* Invers matriks 3x3 (baris demi baris), atau null kalau tak terbalikkan. */
+  const invert3 = (m) => {
+    const [a, b, c, d, e, f, g, h, i] = m;
+    const A = e * i - f * h;
+    const B = -(d * i - f * g);
+    const C = d * h - e * g;
+    const det = a * A + b * B + c * C;
+    if (!Number.isFinite(det) || Math.abs(det) < 1e-12) return null;
+    const s = 1 / det;
+    return [A * s, -(b * i - c * h) * s, (b * f - c * e) * s, B * s, (a * i - c * g) * s, -(a * f - c * d) * s, C * s, -(a * h - b * g) * s, (a * e - b * d) * s];
   };
 
   /* transform CSS yang memetakan elemen berukuran w x h (origin 0 0, posisi
@@ -1181,7 +1229,6 @@ onmessage = async (event) => {
     if (E.scanner) return;
     if (!E.mod) {
       E.engineFailed = true;
-      refreshHint();
       return;
     }
     try {
@@ -1191,7 +1238,6 @@ onmessage = async (event) => {
     } catch (err) {
       console.warn("[scan] detektor tidak bisa dijalankan, kamera jalan tanpa deteksi", err);
       E.engineFailed = true;
-      refreshHint();
       return;
     }
     try {
@@ -1459,9 +1505,7 @@ onmessage = async (event) => {
       } catch {}
     }
     E.video = null;
-    E.layer?.remove();
-    E.layer = null;
-    E.ctx = null;
+    dropLayer();
   };
 
   const cameraError = (err) => {
@@ -1490,7 +1534,6 @@ onmessage = async (event) => {
     ui(() => {
       this.cameraState = "loading";
       this.cameraMessage = "";
-      this.hint = this.copy.hintLoading;
       this.torchOn = false;
     });
 
@@ -1550,7 +1593,6 @@ onmessage = async (event) => {
       this.hasManyCameras = E.deviceIds.length > 1;
       this.torchAvailable = torch;
     });
-    refreshHint();
     E.raf = requestAnimationFrame(frame);
   };
 
@@ -1570,13 +1612,6 @@ onmessage = async (event) => {
     } catch (err) {
       console.warn("[scan] lampu kilat", err);
     }
-  };
-
-  this.toggleAuto = () => {
-    this.autoCapture = !this.autoCapture;
-    E.anchor = null;
-    E.steadySince = 0;
-    refreshHint();
   };
 
   /* Pindah aplikasi / tab: kamera dilepas, lalu dinyalakan lagi saat kembali. */
@@ -1606,10 +1641,7 @@ onmessage = async (event) => {
       target: null,
       shown: null,
       alpha: 0,
-      anchor: null,
-      steadySince: 0,
-      bigEnough: false,
-      progress: 0,
+      aspect: 0,
       frozen: false,
       lastNow: 0,
       orphan: 0,
@@ -1617,12 +1649,6 @@ onmessage = async (event) => {
       lastDetect: 0,
       detectGap: DETECT_GAP_MS,
     });
-  };
-
-  const refreshHint = () => {
-    if (this.cameraState !== "ready") return;
-    if (!E.target) setHint(E.engineFailed ? this.copy.hintTap : this.copy.hintSearch);
-    else setHint(!E.bigEnough ? this.copy.hintCloser : this.autoCapture ? this.copy.hintHold : this.copy.hintTap);
   };
 
   const detectLive = async () => {
@@ -1639,57 +1665,25 @@ onmessage = async (event) => {
   };
 
   const onDetection = (q, vw, vh) => {
-    const now = performance.now();
     if (!q) {
       E.hits = 0;
-      if (++E.misses >= MISSES_TO_LOSE && E.target) {
-        E.target = null;
-        E.anchor = null;
-        E.steadySince = 0;
-      }
-      if (!E.target) setHint(this.copy.hintSearch);
+      if (++E.misses >= MISSES_TO_LOSE) E.target = null;
       return;
     }
     E.misses = 0;
     if (!E.target && ++E.hits < HITS_TO_LOCK) return;
     if (!E.target) {
-      E.lockAt = now;
+      /* Efek "muncul" hanya diulang kalau cahayanya sudah benar-benar
+         padam — kertas yang hilang sekejap tidak membuatnya berkedip. */
+      if (E.alpha < 0.3) E.lockAt = performance.now();
       E.shown = null;
       buzz(8);
     } else {
       q = alignQuad(q, E.target);
     }
     E.target = q;
-    E.bigEnough = quadArea(q) >= AUTO_MIN_AREA * vw * vh;
-    const diag = Math.hypot(vw, vh);
-    const drift = E.anchor ? Math.max(...q.map((p, i) => dist(p, E.anchor[i]))) / diag : Infinity;
-    if (drift > STEADY_TOLERANCE || !E.bigEnough) {
-      E.anchor = q;
-      E.steadySince = now;
-    }
-    setHint(!E.bigEnough ? this.copy.hintCloser : this.autoCapture ? this.copy.hintHold : this.copy.hintTap);
-  };
-
-  const ensureLayer = (stage) => {
-    if (!E.layer || E.layer.parentNode !== stage) {
-      E.layer?.remove();
-      const canvas = document.createElement("canvas");
-      canvas.className = "scn-layer";
-      canvas.setAttribute("aria-hidden", "true");
-      Object.assign(canvas.style, { position: "absolute", inset: "0", width: "100%", height: "100%", pointerEvents: "none", zIndex: "1" });
-      stage.appendChild(canvas);
-      E.layer = canvas;
-      E.ctx = canvas.getContext("2d");
-    }
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const w = Math.round(stage.clientWidth * dpr);
-    const h = Math.round(stage.clientHeight * dpr);
-    if (E.layer.width !== w || E.layer.height !== h) {
-      E.layer.width = w;
-      E.layer.height = h;
-    }
-    E.dpr = dpr;
-    return E.ctx;
+    const ratio = estimateRatio(q, vw, vh);
+    E.aspect = E.aspect ? E.aspect + (ratio - E.aspect) * 0.25 : ratio;
   };
 
   const frame = (now) => {
@@ -1717,268 +1711,384 @@ onmessage = async (event) => {
       });
     }
 
-    const ctx = ensureLayer(stage);
-    const bw = stage.clientWidth;
-    const bh = stage.clientHeight;
-    ctx.setTransform(E.dpr, 0, 0, E.dpr, 0, 0);
-    ctx.clearRect(0, 0, bw, bh);
-    if (!v.videoWidth) return;
-
+    ensureLayer(stage);
     const want = E.target ? 1 : 0;
-    E.alpha += (want - E.alpha) * (1 - Math.exp(-dt / (want ? 110 : 180)));
+    E.alpha += (want - E.alpha) * (1 - Math.exp(-dt / (want ? 140 : 220)));
     if (E.target) E.shown = E.shown ? lerpQuad(E.shown, E.target, 1 - Math.exp(-dt / 70)) : E.target.map((p) => ({ ...p }));
-    if (!E.shown || E.alpha < 0.01) {
+    if (!E.shown || E.alpha < 0.01 || !v.videoWidth) {
       if (!E.target) E.shown = null;
+      renderLight(null, now);
       return;
     }
 
-    let progress = 0;
-    if (E.frozen) progress = 1;
-    else if (this.autoCapture && E.target && E.bigEnough && E.steadySince && !this.isBusy && this.cameraState === "ready") {
-      progress = clamp((now - E.steadySince) / HOLD_MS, 0, 1);
-      if (progress >= 1 && E.alpha > 0.9) this.capture();
-    }
-    E.progress += (progress - E.progress) * (1 - Math.exp(-dt / (progress > E.progress ? 45 : 120)));
-
+    /* Video memakai object-fit: cover, jadi koordinat video dipetakan ke
+       layar dengan skala yang MENUTUPI layar (sebagian tepi video terpotong). */
+    const bw = stage.clientWidth;
+    const bh = stage.clientHeight;
     const vw = v.videoWidth;
     const vh = v.videoHeight;
-    const k = Math.min(bw / vw, bh / vh);
-    const R = { x: (bw - vw * k) / 2, y: (bh - vh * k) / 2, w: vw * k, h: vh * k };
-    paintLight(
-      ctx,
-      E.shown.map((p) => ({ x: R.x + p.x * k, y: R.y + p.y * k })),
-      R,
+    const k = Math.max(bw / vw, bh / vh);
+    const ox = (bw - vw * k) / 2;
+    const oy = (bh - vh * k) / 2;
+    renderLight(
+      E.shown.map((p) => ({ x: ox + p.x * k, y: oy + p.y * k })),
       now,
-      E.alpha,
-      E.progress,
     );
   };
   //#endregion
 
-  //#region Lapisan cahaya — inti tampilan scan
-  /* "Structured light": kertas yang terdeteksi diselimuti cahaya biru
-     dingin, lalu kisi titik cahaya diproyeksikan ke permukaannya lewat
-     homografi — ikut miring dan menempel ke kertas sungguhan, bukan kotak
-     datar di atas video, dan bukan garis scan yang naik-turun.
-       kunci   titik-titik mekar dari tengah kertas, titik sudut masuk besar
-               lalu "mengunci" pas di sudutnya
-       tunggu  denyut cincin cahaya merambat dari tengah ke tepi, berulang
-       tahan   cincin cahaya mengembang dari tengah; bagian yang sudah
-               dilewati jadi bersih dan terang — kertas "terbaca". Itulah
-               progres jepret otomatis, tanpa bar atau cincin terpisah
-       jepret  kilau di kertas, lalu kertas yang sudah lurus terangkat ke
-               posisinya di layar hasil (revealResult)
-     Warna cahayanya pita spektral ungu -> biru -> mint, seperti cahaya yang
-     terurai lensa. Titik dan cincin digambar aditif (lighter) di atas
-     selubung biru, jadi tetap menyala walau kertasnya putih. */
-  const BAND = [
-    [124, 92, 255],
-    [86, 112, 255],
-    [62, 139, 255],
-    [47, 182, 232],
-    [52, 227, 196],
-  ];
-  const bandAt = (t) => {
-    const x = clamp(t, 0, 1) * (BAND.length - 1);
-    const i = Math.min(BAND.length - 2, Math.floor(x));
-    const f = x - i;
-    return BAND[i].map((c, k) => Math.round(c + (BAND[i + 1][k] - c) * f));
+  //#region Lapisan cahaya — inti tampilan scan (WebGL)
+  /* Semua efek digambar oleh satu shader WebGL di atas video. Untuk tiap
+     piksel layar, shader menghitung balik posisinya di permukaan kertas
+     (homografi terbalik), jadi efeknya menempel ke kertas sungguhan dan ikut
+     miring bersamanya. Isinya HANYA isian (fill) — tidak ada garis tepi —
+     dalam satu warna, ACCENT.
+
+     Pilihan motion (this.motion):
+       piksel    kertas dipecah jadi piksel yang menyala acak, bergelombang
+                 mengikuti medan derau; sesekali semuanya menyala serempak
+                 seperti momen "terdigitalkan"
+       termal    medan panas yang mengalir (derau berlapis), dibagi jadi
+                 beberapa tingkat isian seperti kamera termal
+       jejak     dua titik cahaya menelusuri kertas dengan lintasan
+                 Lissajous, meninggalkan jejak yang memudar
+       partikel  kawanan partikel yang berkelip, sesekali berpusar dan
+                 merapat ke tengah lalu menyebar lagi
+       proyeksi  matriks titik halftone yang ukurannya mengikuti pola
+                 interferensi dua gelombang — seperti cahaya terstruktur
+                 pada mesin scan 3D
+     Semua diawali efek "muncul": isian timbul acak per petak dalam ~0,6 dtk.
+
+     Kalau WebGL tidak tersedia, kertas cukup diberi isian warna polos. */
+  const ACCENT_RGB = [1, 3, 5].map((i) => parseInt(ACCENT.slice(i, i + 2), 16) / 255);
+
+  const LIGHT_VERT = "attribute vec2 a;void main(){gl_Position=vec4(a,0.0,1.0);}";
+
+  const LIGHT_FRAG = `
+uniform vec2 uRes;
+uniform mat3 uInv;
+uniform float uTime;
+uniform float uSince;
+uniform float uAlpha;
+uniform float uAspect;
+uniform float uMode;
+uniform float uDim;
+uniform vec3 uColor;
+
+float hash(vec2 p) {
+  p = fract(p * vec2(234.34, 435.345));
+  p += dot(p, p + 34.23);
+  return fract(p.x * p.y);
+}
+
+float noise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  float a = hash(i);
+  float b = hash(i + vec2(1.0, 0.0));
+  float c = hash(i + vec2(0.0, 1.0));
+  float d = hash(i + vec2(1.0, 1.0));
+  return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+}
+
+float fbm(vec2 p) {
+  float s = 0.0;
+  float a = 0.5;
+  for (int i = 0; i < 4; i++) {
+    s += a * noise(p);
+    p = p * 2.02 + vec2(17.0, 9.0);
+    a *= 0.5;
+  }
+  return s;
+}
+
+/* warna aksen; heat mendorongnya ke putih panas */
+vec4 glow(float a, float heat) {
+  a = clamp(a, 0.0, 1.0);
+  vec3 c = mix(uColor, vec3(1.0, 0.9, 0.86), clamp(heat, 0.0, 1.0));
+  return vec4(c * a, a);
+}
+
+vec4 over(vec4 top, vec4 under) {
+  return top + under * (1.0 - top.a);
+}
+
+/* 0 piksel */
+vec4 fxPixel(vec2 q, float px) {
+  float n = 24.0;
+  vec2 g = q * n;
+  vec2 id = floor(g);
+  vec2 f = fract(g) - 0.5;
+  float r = hash(id);
+  float field = smoothstep(0.35, 0.62, fbm(id / n * 2.0 + vec2(uTime * 0.25, -uTime * 0.17)));
+  float t = fract(uTime / 1.6 + r);
+  float pop = sin(clamp(t / 0.3, 0.0, 1.0) * 3.14159) * field;
+  float sync = pow(max(0.0, sin(uTime * 1.25)), 24.0);
+  float k = max(pop, sync);
+  float size = 0.09 + 0.35 * k;
+  float d = max(abs(f.x), abs(f.y)) - size;
+  float aa = px * n;
+  float fill = 1.0 - smoothstep(-aa, aa, d);
+  return glow(fill * (0.35 + 0.6 * k), pop * step(0.75, hash(id + 3.7)) + sync * 0.4);
+}
+
+/* 1 termal */
+vec4 fxThermal(vec2 q) {
+  vec2 p = q * 2.4;
+  vec2 w = vec2(fbm(p + vec2(0.0, uTime * 0.14)), fbm(p + vec2(5.2, 1.3) - vec2(uTime * 0.11, 0.0)));
+  float v = fbm(p + 1.8 * w + vec2(uTime * 0.06, uTime * 0.02));
+  v = clamp((v - 0.2) / 0.6, 0.0, 1.0);
+  float x = v * 5.0;
+  float lvl = clamp((floor(x) + smoothstep(0.94, 1.0, fract(x))) / 4.0, 0.0, 1.0);
+  return glow(0.06 + 0.5 * lvl, smoothstep(0.75, 1.0, lvl) * 0.7);
+}
+
+/* 2 jejak */
+vec2 probe(float t, float phase) {
+  return vec2(0.5 + 0.38 * sin(t * 0.93 + phase) + 0.06 * sin(t * 2.7 + phase * 2.0),
+              0.5 + 0.4 * sin(t * 1.37 + phase * 1.7) + 0.05 * cos(t * 3.1 + phase));
+}
+
+vec4 fxTrail(vec2 q) {
+  vec2 s = vec2(uAspect, 1.0);
+  float acc = 0.0;
+  for (int i = 0; i < 36; i++) {
+    float fi = float(i);
+    float w = exp(-fi * 0.075);
+    float r = 0.035 + fi * 0.0016;
+    vec2 d1 = q - probe(uTime - fi * 0.045, 0.0) * s;
+    vec2 d2 = q - probe(uTime * 0.8 - fi * 0.045, 2.4) * s;
+    acc += w * (exp(-dot(d1, d1) / (r * r)) + 0.6 * exp(-dot(d2, d2) / (r * r)));
+  }
+  vec2 h1 = q - probe(uTime, 0.0) * s;
+  vec2 h2 = q - probe(uTime * 0.8, 2.4) * s;
+  float head = exp(-dot(h1, h1) / 0.00035) + 0.7 * exp(-dot(h2, h2) / 0.00035);
+  return glow(acc * 0.32 + head, head * 0.95 + acc * 0.06);
+}
+
+/* 3 partikel */
+vec4 fxSwarm(vec2 q, float px) {
+  vec2 c = vec2(uAspect, 1.0) * 0.5;
+  vec2 d = q - c;
+  float pull = (0.5 + 0.5 * sin(uTime * 0.75)) * exp(-dot(d, d) / 0.14);
+  float ang = 0.9 * pull;
+  float zoom = 1.0 + 0.8 * pull;
+  d = vec2(cos(ang) * d.x - sin(ang) * d.y, sin(ang) * d.x + cos(ang) * d.y) * zoom;
+  float n = 17.0;
+  vec2 g = (c + d) * n;
+  vec2 base = floor(g);
+  float aa = px * n * zoom;
+  float a = 0.0;
+  float heat = 0.0;
+  for (int j = -1; j <= 1; j++) {
+    for (int i = -1; i <= 1; i++) {
+      vec2 id = base + vec2(float(i), float(j));
+      float r1 = hash(id);
+      float r2 = hash(id + 1.7);
+      float r3 = hash(id + 4.3);
+      float t = uTime * (0.5 + r1);
+      vec2 pos = id + 0.5 + 0.42 * vec2(sin(t + r2 * 6.283), cos(t * 1.31 + r3 * 6.283));
+      float dd = length(g - pos);
+      float tw = 0.45 + 0.55 * pow(0.5 + 0.5 * sin(uTime * (2.0 + 3.0 * r2) + r1 * 20.0), 2.0);
+      float rad = 0.09 + 0.07 * r3;
+      float core = 1.0 - smoothstep(rad - aa, rad + aa, dd);
+      float halo = exp(-dd * dd / (rad * rad * 7.0)) * 0.3;
+      a += (core + halo) * tw;
+      heat += core * step(0.8, r1);
+    }
+  }
+  return glow(a * 0.85, heat);
+}
+
+/* 4 proyeksi */
+vec4 fxFringe(vec2 q, float px) {
+  float n = 36.0;
+  vec2 g = q * n;
+  vec2 id = floor(g) + 0.5;
+  vec2 f = g - id;
+  vec2 c = id / n;
+  float a1 = uTime * 0.23;
+  float a2 = 1.7 - uTime * 0.19;
+  float w = 0.5 + 0.25 * sin(dot(c, vec2(cos(a1), sin(a1))) * 15.0 - uTime * 2.4)
+                + 0.25 * sin(dot(c, vec2(cos(a2), sin(a2))) * 11.0 + uTime * 1.9);
+  float rad = 0.06 + 0.42 * w * w;
+  float d = length(f) - rad;
+  float aa = px * n;
+  float fill = 1.0 - smoothstep(-aa, aa, d);
+  return glow(fill * (0.25 + 0.65 * w), smoothstep(0.82, 1.0, w) * 0.55);
+}
+
+void main() {
+  vec2 sp = vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y);
+  vec4 outside = vec4(0.0, 0.0, 0.0, uDim * uAlpha);
+  vec3 h = uInv * vec3(sp, 1.0);
+  if (h.z <= 0.0) {
+    gl_FragColor = outside;
+    return;
+  }
+  vec2 uv = h.xy / h.z;
+  vec3 hx = uInv * vec3(sp + vec2(1.0, 0.0), 1.0);
+  vec3 hy = uInv * vec3(sp + vec2(0.0, 1.0), 1.0);
+  float px = max(length(hx.xy / hx.z - uv), length(hy.xy / hy.z - uv));
+  vec2 e = min(uv, 1.0 - uv);
+  float inside = clamp(min(e.x, e.y) / px + 0.5, 0.0, 1.0);
+  if (inside <= 0.0) {
+    gl_FragColor = outside;
+    return;
+  }
+  vec2 q = vec2(uv.x * uAspect, uv.y);
+  vec4 fx;
+  if (uMode < 0.5) fx = fxPixel(q, px);
+  else if (uMode < 1.5) fx = fxThermal(q);
+  else if (uMode < 2.5) fx = fxTrail(q);
+  else if (uMode < 3.5) fx = fxSwarm(q, px);
+  else fx = fxFringe(q, px);
+  float enter = clamp(uSince / 0.65, 0.0, 1.0) * 1.2;
+  float vis = 1.0 - smoothstep(enter - 0.2, enter, hash(floor(q * 46.0) + 0.5));
+  vec4 paper = over(fx, vec4(uColor * 0.12, 0.12)) * (vis * uAlpha);
+  gl_FragColor = mix(outside, paper, inside);
+}
+`;
+
+  const buildGL = (canvas) => {
+    let gl = null;
+    try {
+      gl = canvas.getContext("webgl", { alpha: true, premultipliedAlpha: true, antialias: false, depth: false, stencil: false });
+    } catch {}
+    if (!gl) return null;
+    const hp = gl.getShaderPrecisionFormat(gl.FRAGMENT_SHADER, gl.HIGH_FLOAT);
+    const precision = hp && hp.precision > 0 ? "highp" : "mediump";
+    const compile = (type, src) => {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, src);
+      gl.compileShader(shader);
+      if (gl.getShaderParameter(shader, gl.COMPILE_STATUS)) return shader;
+      console.warn("[scan] shader", gl.getShaderInfoLog(shader));
+      return null;
+    };
+    const vs = compile(gl.VERTEX_SHADER, LIGHT_VERT);
+    const fs = compile(gl.FRAGMENT_SHADER, `precision ${precision} float;\n${LIGHT_FRAG}`);
+    if (!vs || !fs) return null;
+    const prog = gl.createProgram();
+    gl.attachShader(prog, vs);
+    gl.attachShader(prog, fs);
+    gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+      console.warn("[scan] shader", gl.getProgramInfoLog(prog));
+      return null;
+    }
+    gl.useProgram(prog);
+    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+    const attr = gl.getAttribLocation(prog, "a");
+    gl.enableVertexAttribArray(attr);
+    gl.vertexAttribPointer(attr, 2, gl.FLOAT, false, 0, 0);
+    const loc = {};
+    for (const name of ["uRes", "uInv", "uTime", "uSince", "uAlpha", "uAspect", "uMode", "uDim", "uColor"]) loc[name] = gl.getUniformLocation(prog, name);
+    gl.uniform3f(loc.uColor, ACCENT_RGB[0], ACCENT_RGB[1], ACCENT_RGB[2]);
+    gl.uniform1f(loc.uDim, OUTSIDE_DIM);
+    return { gl, loc };
   };
 
-  /* Titik cahaya dirender sekali ke kanvas kecil (sprite), lalu tinggal
-     ditempel — jauh lebih ringan daripada shadowBlur per titik. */
-  const SPRITES = Array.from({ length: 20 }, (_, i) => {
-    const [r, g, b] = bandAt(i / 19);
+  const newLayerCanvas = (stage) => {
     const canvas = document.createElement("canvas");
-    canvas.width = canvas.height = 48;
-    const x = canvas.getContext("2d");
-    const grad = x.createRadialGradient(24, 24, 0, 24, 24, 24);
-    grad.addColorStop(0, "rgba(255,255,255,1)");
-    grad.addColorStop(0.14, `rgba(${r},${g},${b},0.95)`);
-    grad.addColorStop(0.38, `rgba(${r},${g},${b},0.3)`);
-    grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
-    x.fillStyle = grad;
-    x.fillRect(0, 0, 48, 48);
+    canvas.className = "scn-layer";
+    canvas.setAttribute("aria-hidden", "true");
+    Object.assign(canvas.style, { position: "absolute", inset: "0", width: "100%", height: "100%", pointerEvents: "none", zIndex: "1" });
+    stage.appendChild(canvas);
     return canvas;
-  });
+  };
 
-  const NODE = (() => {
-    const canvas = document.createElement("canvas");
-    canvas.width = canvas.height = 64;
-    const x = canvas.getContext("2d");
-    const grad = x.createRadialGradient(32, 32, 0, 32, 32, 32);
-    grad.addColorStop(0, "rgba(255,255,255,1)");
-    grad.addColorStop(0.12, "rgba(255,255,255,1)");
-    grad.addColorStop(0.2, "rgba(150,190,255,0.85)");
-    grad.addColorStop(0.5, "rgba(62,139,255,0.25)");
-    grad.addColorStop(1, "rgba(62,139,255,0)");
-    x.fillStyle = grad;
-    x.fillRect(0, 0, 64, 64);
-    return canvas;
-  })();
+  const dropLayer = () => {
+    try {
+      E.gl?.gl.getExtension("WEBGL_lose_context")?.loseContext();
+    } catch {}
+    E.layer?.remove();
+    E.layer = null;
+    E.gl = null;
+    E.ctx = null;
+  };
 
-  const paintLight = (ctx, S, R, now, alpha, progress) => {
-    const W = (dist(S[0], S[1]) + dist(S[3], S[2])) / 2;
-    const H = (dist(S[0], S[3]) + dist(S[1], S[2])) / 2;
-    if (W < 4 || H < 4) return;
-    const since = now - E.lockAt;
-    const Hm = squareToQuad(S);
-    const half = Math.hypot(W, H) / 2;
-
-    /* Lingkaran berjari-jari d di permukaan kertas (0 = tengah, 1 = sudut),
-       diproyeksikan ke layar — jadi cincinnya ikut miring bersama kertas. */
-    const onSheet = (u, v) => {
-      const w = Hm[6] * u + Hm[7] * v + 1;
-      return { x: (Hm[0] * u + Hm[1] * v + Hm[2]) / w, y: (Hm[3] * u + Hm[4] * v + Hm[5]) / w };
-    };
-    const ring = (d) => {
-      const pts = [];
-      for (let i = 0; i < 72; i++) {
-        const t = (i / 72) * Math.PI * 2;
-        pts.push(onSheet(0.5 + (Math.cos(t) * d * half) / W, 0.5 + (Math.sin(t) * d * half) / H));
+  const ensureLayer = (stage) => {
+    if (!E.layer || E.layer.parentNode !== stage) {
+      dropLayer();
+      let canvas = newLayerCanvas(stage);
+      E.gl = E.glBroken ? null : buildGL(canvas);
+      if (!E.gl) {
+        /* Kanvas yang sempat dipakai WebGL tidak bisa diberi konteks 2D:
+           ganti dengan kanvas baru. */
+        if (!E.glBroken) console.warn("[scan] WebGL tidak tersedia, cahaya memakai isian sederhana");
+        E.glBroken = true;
+        canvas.remove();
+        canvas = newLayerCanvas(stage);
+        E.ctx = canvas.getContext("2d");
       }
-      return pts;
-    };
-    const pathPoly = (pts) => {
-      ctx.moveTo(pts[0].x, pts[0].y);
-      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-      ctx.closePath();
-    };
-
-    const reveal = REDUCED ? 2 : easeOut(clamp(since / 600, 0, 1)) * 1.3; // titik mekar saat mengunci
-    const front = progress > 0.001 ? progress * 1.08 : 0; // batas bagian yang sudah "terbaca"
-    const wave = REDUCED || progress > 0.02 ? -1 : ((since % 2000) / 2000) * 1.45 - 0.15; // denyut saat menunggu
-
-    // 1. di luar kertas diredupkan, jadi mata langsung tertuju ke kertas
-    ctx.beginPath();
-    ctx.rect(R.x, R.y, R.w, R.h);
-    pathQuad(ctx, S);
-    ctx.fillStyle = `rgba(0,0,0,${0.55 * alpha})`;
-    ctx.fill("evenodd");
-
-    ctx.save();
-    ctx.beginPath();
-    pathQuad(ctx, S);
-    ctx.clip();
-
-    // 2. selubung cahaya biru di bagian kertas yang belum terbaca
-    ctx.globalCompositeOperation = "multiply";
-    ctx.beginPath();
-    pathQuad(ctx, S);
-    if (front > 0.02) pathPoly(ring(Math.min(front, 1.6)));
-    ctx.fillStyle = `rgba(64,76,178,${0.4 * alpha})`;
-    ctx.fill("evenodd");
-
-    // bagian yang sudah terbaca sedikit lebih terang: kertas "dibersihkan"
-    if (front > 0.02) {
-      ctx.globalCompositeOperation = "screen";
-      ctx.beginPath();
-      pathPoly(ring(Math.min(front, 1.6)));
-      ctx.fillStyle = `rgba(255,255,255,${0.2 * alpha})`;
-      ctx.fill();
-    }
-
-    // 3. kisi titik cahaya, dipetakan ke permukaan kertas (aditif)
-    ctx.globalCompositeOperation = "lighter";
-    let gap = clamp(Math.min(W, H) / 18, 7, 14);
-    let nu = Math.max(5, Math.round(W / gap));
-    let nv = Math.max(5, Math.round(H / gap));
-    if (nu * nv > 1800) {
-      const f = Math.sqrt((nu * nv) / 1800);
-      nu = Math.round(nu / f);
-      nv = Math.round(nv / f);
-      gap *= f;
-    }
-    const wc = Hm[6] * 0.5 + Hm[7] * 0.5 + 1;
-    const drift = REDUCED ? 0 : now / 9000;
-    for (let j = 0; j < nv; j++) {
-      const v = (j + 0.5) / nv;
-      for (let i = 0; i < nu; i++) {
-        const u = (i + 0.5) / nu;
-        const d = Math.hypot((u - 0.5) * W, (v - 0.5) * H) / half;
-        if (d > reveal) continue;
-        let a = 0.3;
-        if (reveal - d < 0.14) a *= (reveal - d) / 0.14;
-        if (wave > -1) {
-          const z = (d - wave) / 0.07;
-          a += 0.55 * Math.exp(-z * z);
-        }
-        if (front > 0) {
-          if (d < front - 0.04) a *= 0.12; // sudah terbaca: cahayanya mengendap
-          const z = (d - front) / 0.05;
-          a += 0.9 * Math.exp(-z * z);
-        }
-        // kilau interferensi pelan, supaya kisi terasa seperti cahaya, bukan pola cetak
-        if (!REDUCED) a *= 0.8 + 0.2 * Math.sin(u * 11 + now / 520) * Math.sin(v * 15 - now / 690);
-        a *= alpha;
-        if (a < 0.03) continue;
-        const p = onSheet(u, v);
-        const w = Hm[6] * u + Hm[7] * v + 1;
-        const r = gap * (0.32 + 0.3 * Math.min(1, a)) * (wc / w);
-        let t = (u * 0.55 + v * 0.45 + drift) % 2;
-        if (t > 1) t = 2 - t; // bolak-balik, jadi warnanya tidak pernah "patah"
-        ctx.globalAlpha = a > 1 ? 1 : a;
-        ctx.drawImage(SPRITES[Math.floor(t * (SPRITES.length - 1))], p.x - r, p.y - r, r * 2, r * 2);
-      }
-    }
-    ctx.globalAlpha = 1;
-
-    // 4. cincin cahaya: denyut tipis saat menunggu, garis depan terang saat ditahan
-    const ringD = front > 0 ? front : wave;
-    if (ringD > 0.01 && ringD < 1.45) {
-      const strength = (front > 0 ? 1 : 0.5 * (1 - ringD / 1.45)) * alpha;
-      const pts = ring(ringD);
-      ctx.lineJoin = "round";
-      ctx.strokeStyle = `rgba(62,139,255,${0.32 * strength})`;
-      ctx.lineWidth = 12;
-      ctx.beginPath();
-      pathPoly(pts);
-      ctx.stroke();
-      ctx.strokeStyle = `rgba(170,238,255,${0.95 * strength})`;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      pathPoly(pts);
-      ctx.stroke();
-    }
-    ctx.globalCompositeOperation = "source-over";
-    ctx.restore();
-
-    // 4. tepi bercahaya dengan pinggiran spektral: ungu di dalam, mint di luar
-    const c = centroid(S);
-    const grow = (q, px) =>
-      q.map((p) => {
-        const dx = p.x - c.x;
-        const dy = p.y - c.y;
-        const l = Math.hypot(dx, dy) || 1;
-        return { x: p.x + (dx / l) * px, y: p.y + (dy / l) * px };
+      canvas.addEventListener("webglcontextlost", (event) => {
+        event.preventDefault();
+        if (E.layer !== canvas) return;
+        canvas.remove(); // dibuat ulang di frame berikutnya
+        Object.assign(E, { layer: null, gl: null, ctx: null });
       });
-    ctx.lineJoin = "round";
-    ctx.save();
-    ctx.shadowColor = `rgba(62,139,255,${0.9 * alpha})`;
-    ctx.shadowBlur = 18 + 12 * progress;
-    ctx.strokeStyle = `rgba(52,227,196,${0.8 * alpha})`;
-    ctx.lineWidth = 2;
+      E.layer = canvas;
+    }
+    const scale = Math.min(window.devicePixelRatio || 1, LIGHT_SCALE_MAX);
+    const w = Math.max(1, Math.round(stage.clientWidth * scale));
+    const h = Math.max(1, Math.round(stage.clientHeight * scale));
+    if (E.layer.width !== w || E.layer.height !== h) {
+      E.layer.width = w;
+      E.layer.height = h;
+    }
+    E.scale = scale;
+  };
+
+  const motionIndex = () => Math.max(0, this.motions.findIndex((m) => m.key === this.motion));
+
+  /* S: empat sudut kertas di layar (piksel CSS), atau null kalau tidak ada. */
+  const renderLight = (S, now) => {
+    const canvas = E.layer;
+    if (!canvas) return;
+    const s = E.scale;
+    if (E.gl) {
+      const { gl, loc } = E.gl;
+      gl.viewport(0, 0, canvas.width, canvas.height);
+      gl.clearColor(0, 0, 0, 0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      if (!S) return;
+      const m = squareToQuad(S.map((p) => ({ x: p.x * s, y: p.y * s })));
+      const inv = invert3([m[0], m[1], m[2], m[3], m[4], m[5], m[6], m[7], 1]);
+      if (!inv) return;
+      gl.uniform2f(loc.uRes, canvas.width, canvas.height);
+      gl.uniformMatrix3fv(loc.uInv, false, [inv[0], inv[3], inv[6], inv[1], inv[4], inv[7], inv[2], inv[5], inv[8]]);
+      gl.uniform1f(loc.uTime, REDUCED ? 3 : (now % 600000) / 1000);
+      gl.uniform1f(loc.uSince, REDUCED ? 99 : (now - E.lockAt) / 1000);
+      gl.uniform1f(loc.uAlpha, E.alpha);
+      gl.uniform1f(loc.uAspect, clamp(E.aspect || 0.75, 0.3, 3));
+      gl.uniform1f(loc.uMode, motionIndex());
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      return;
+    }
+    const ctx = E.ctx;
+    if (!ctx) return;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (!S) return;
+    ctx.setTransform(s, 0, 0, s, 0, 0);
     ctx.beginPath();
-    pathQuad(ctx, grow(S, 1.6));
-    ctx.stroke();
-    ctx.restore();
-    ctx.strokeStyle = `rgba(124,92,255,${0.85 * alpha})`;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    pathQuad(ctx, grow(S, -1.6));
-    ctx.stroke();
-    ctx.strokeStyle = `rgba(255,255,255,${(0.8 + 0.2 * progress) * alpha})`;
-    ctx.lineWidth = 1.25;
+    ctx.rect(0, 0, canvas.width / s, canvas.height / s);
+    pathQuad(ctx, S);
+    ctx.fillStyle = `rgba(0,0,0,${OUTSIDE_DIM * E.alpha})`;
+    ctx.fill("evenodd");
     ctx.beginPath();
     pathQuad(ctx, S);
-    ctx.stroke();
+    ctx.fillStyle = `rgba(${ACCENT_RGB.map((c) => Math.round(c * 255)).join(",")},${0.35 * E.alpha})`;
+    ctx.fill();
+  };
 
-    // 5. titik sudut: masuk besar, lalu mengunci pas di sudut kertas
-    const lock = REDUCED ? 0 : Math.pow(1 - clamp(since / 460, 0, 1), 3);
-    const nodeR = 14 * (1 + 1.8 * lock);
-    ctx.globalAlpha = alpha;
-    for (const p of S) ctx.drawImage(NODE, p.x - nodeR, p.y - nodeR, nodeR * 2, nodeR * 2);
-    ctx.globalAlpha = 1;
+  this.setMotion = (key) => {
+    if (key === this.motion) return;
+    this.motion = key;
+    E.lockAt = performance.now(); // efek "muncul" diulang supaya pergantiannya terasa
   };
   //#endregion
 
@@ -1997,7 +2107,7 @@ onmessage = async (event) => {
     const poly = `polygon(${q.map((p) => `${p.x.toFixed(1)}px ${p.y.toFixed(1)}px`).join(",")})`;
     const bloom = fixedEl("div", { zIndex: "2147483000", filter: "blur(18px)" });
     const tint = document.createElement("div");
-    Object.assign(tint.style, { position: "absolute", inset: "0", clipPath: poly, background: "linear-gradient(135deg, #7c5cff, #3e8bff 50%, #34e3c4)" });
+    Object.assign(tint.style, { position: "absolute", inset: "0", clipPath: poly, background: ACCENT });
     bloom.appendChild(tint);
     const core = fixedEl("div", { zIndex: "2147483001", clipPath: poly, background: "#fff" });
     document.body.append(bloom, core);
@@ -2010,21 +2120,23 @@ onmessage = async (event) => {
     core.animate([{ opacity: 0 }, { opacity: 0.9, offset: 0.12 }, { opacity: 0 }], timing).finished.then(done, done);
   };
 
-  /* Posisi frame video di layar (object-fit: contain). */
+  /* Posisi frame video di layar (object-fit: cover — bisa melebihi layar). */
   const viewOf = (stage, v) => {
     if (!stage || !v?.videoWidth) return null;
     const r = stage.getBoundingClientRect();
-    const k = Math.min(r.width / v.videoWidth, r.height / v.videoHeight);
+    const k = Math.max(r.width / v.videoWidth, r.height / v.videoHeight);
     return { x: r.left + (r.width - v.videoWidth * k) / 2, y: r.top + (r.height - v.videoHeight * k) / 2, w: v.videoWidth * k, h: v.videoHeight * k, k };
   };
 
   this.capture = async () => {
+    /* Jepret sedang dimatikan (CAPTURE_ENABLED): tombol cuma memberi getar. */
+    if (!CAN_CAPTURE) {
+      buzz(12);
+      return;
+    }
     if (this.isBusy || this.cameraState !== "ready" || !E.video?.videoWidth) return;
     const v = E.video;
-    ui(() => {
-      this.isBusy = true;
-      this.hint = this.copy.hintWorking;
-    });
+    ui(() => (this.isBusy = true));
     buzz(18);
 
     const still = document.createElement("canvas");
@@ -2079,7 +2191,7 @@ onmessage = async (event) => {
     let sheet = null;
 
     if (animate) {
-      layer = fixedEl("div", { zIndex: "2147482000" });
+      layer = fixedEl("div", { zIndex: "2147482000", overflow: "hidden" });
       shade = document.createElement("div");
       Object.assign(shade.style, { position: "absolute", inset: "0", background: "#000" });
 
@@ -2092,7 +2204,7 @@ onmessage = async (event) => {
       px.beginPath();
       px.rect(0, 0, photo.width, photo.height);
       pathQuad(px, E.corners.map((p) => ({ x: p.x * view.k * dpr, y: p.y * view.k * dpr })));
-      px.fillStyle = "rgba(0,0,0,.52)";
+      px.fillStyle = `rgba(0,0,0,${OUTSIDE_DIM})`;
       px.fill("evenodd");
       Object.assign(photo.style, { position: "absolute", left: `${view.x}px`, top: `${view.y}px`, width: `${view.w}px`, height: `${view.h}px` });
 
@@ -2555,16 +2667,16 @@ onmessage = async (event) => {
       container: host,
       image: E.still,
       corners: toCorners(corners),
-      magnifier: { enabled: true, zoom: 2.5, size: 120, borderColor: "#ffffff", crosshairColor: "#3e8bff" },
+      magnifier: { enabled: true, zoom: 2.5, size: 120, borderColor: "#ffffff", crosshairColor: ACCENT },
       toolbar: { enabled: false },
       handleHitArea: 48,
       theme: {
-        accent: "#3e8bff",
+        accent: ACCENT,
         mask: "rgba(0,0,0,0.55)",
         edgeColor: "#ffffff",
         edgeWidth: 2,
         handleColor: "#ffffff",
-        handleRingColor: "#3e8bff",
+        handleRingColor: ACCENT,
         handleSize: 20,
       },
     });

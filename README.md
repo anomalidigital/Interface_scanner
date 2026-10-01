@@ -1,10 +1,17 @@
 # Interface_scanner
 
 Halaman scan dokumen untuk platform LOL Photobooth. Kamera mendeteksi kertas
-secara langsung, lalu hasil fotonya dipotong dan diluruskan — yang tersisa
-hanya kertasnya, rata seperti hasil mesin scan.
+secara langsung dan memberi animasi "sedang di-scan" yang menempel di permukaan
+kertas. Hasil fotonya nanti dipotong dan diluruskan — yang tersisa hanya
+kertasnya, rata seperti hasil mesin scan.
 
-![Alur scan: kertas terdeteksi, cahaya membaca dari tengah, kertas terangkat jadi hasil](docs/demo-scan.gif)
+> **Tahap sekarang: fokus ke animasi scan.** Jepret sengaja dimatikan
+> (`CAPTURE_ENABLED = false`), dan ada beberapa pilihan motion untuk
+> dibandingkan langsung di HP.
+
+![Lima pilihan motion scan: piksel, termal, jejak, partikel, proyeksi](docs/demo-motions.webp)
+
+Versi video: [docs/demo-motions.mp4](docs/demo-motions.mp4).
 
 ## Isi repo
 
@@ -14,7 +21,7 @@ hanya kertasnya, rata seperti hasil mesin scan.
 | `preview.html` | Harness pengembangan (Angular → Vue), sama seperti di template Gemini. **Jangan diunggah ke platform.** |
 | `index.html` | Pengalih ke `preview.html` (untuk GitHub Pages). |
 | `test/` | Foto contoh untuk kamera tiruan. |
-| `docs/demo-scan.gif` | Rekaman alur scan di atas. |
+| `docs/` | Rekaman kelima pilihan motion (WebP animasi + MP4). |
 
 ## Menjalankan
 
@@ -23,65 +30,75 @@ python -m http.server 5173
 ```
 
 Lalu buka http://localhost:5173/preview.html — langsung memakai webcam.
+Di HP: buka lewat GitHub Pages repo ini (kamera HP hanya bisa lewat **https**).
 
 | Query | Gunanya |
 | --- | --- |
+| `?motion=termal` | Langsung membuka satu pilihan motion: `piksel`, `termal`, `jejak`, `partikel`, `proyeksi`. |
 | `?fake=test/kartu-meja-kayu.jpg` | Kamera tiruan dari sebuah foto (laptop tanpa kamera, pengujian). Foto lain: `kartu-alas-gelap.jpg`, `kartu-meja-putih.jpg`, `kartu-tegak.jpg` (tegak, cocok untuk ukuran HP). |
 | `&shake=2` | Besar goyangan tangan tiruan (px). |
 | `&walk` | Kertas keluar-masuk frame tiap 10 detik. |
+| `?capture` | Menyalakan alur jepret → hasil untuk dicoba, tanpa mengubah `CAPTURE_ENABLED`. |
 | `?IsUpload` | Tombol "Unggah foto" di layar kamera (sama dengan halaman Gemini). |
 | `?noworker` | Menguji jalur cadangan: deteksi di thread utama. |
 
-Kamera di HP hanya bisa dibuka lewat **https** (atau `localhost`). Untuk mencoba
-di HP: aktifkan GitHub Pages untuk repo ini, atau langsung di platform.
-
 Di console: `__state` (state halaman), `__SCAN` (mesin), `__SCAN_BUILD` (versi).
 
-## Alur layar
+## Layar kamera
+
+- Video **layar penuh** (tanpa bingkai hitam) di HP tegak/miring, tablet, dan
+  desktop; judul, tombol lampu/ganti kamera, dan tombol jepret melayang di
+  atasnya.
+- Tidak ada teks petunjuk dan tidak ada garis tepi di sekeliling kertas:
+  kertas yang terdeteksi ditandai **isian** cahaya, sekelilingnya sedikit
+  diredupkan.
+- Deret tombol di atas tombol jepret = **pilihan motion (sementara)**.
+
+## Pilihan motion
+
+Semua efek digambar satu shader WebGL yang memetakan tiap piksel layar balik
+ke permukaan kertas (homografi), jadi animasinya menempel di kertas sungguhan
+dan ikut miring. Hanya isian, satu warna: **`#ED4835`** (bagian paling terang
+mendekati putih panas). Tiap kali kertas terdeteksi atau motion diganti,
+isiannya "muncul" dulu: petak-petak kecil timbul acak dalam ~0,6 detik.
+
+| Motion | Gerakannya |
+| --- | --- |
+| **Piksel** | Kertas dipecah jadi piksel yang menyala acak, berkelompok mengikuti medan yang bergeser; tiap ±5 detik semua piksel menyala serempak — momen kertas "terdigitalkan". |
+| **Termal** | Medan panas yang mengalir pelan, dibagi beberapa tingkat isian seperti kamera termal. |
+| **Jejak** | Dua titik cahaya menelusuri seluruh kertas (lintasan Lissajous) dan meninggalkan jejak yang memudar — seperti kepala pembaca. |
+| **Partikel** | Kawanan partikel yang berkelip, sesekali berpusar merapat ke tengah lalu menyebar lagi. |
+| **Proyeksi** | Matriks titik halftone yang ukurannya mengikuti interferensi dua gelombang — seperti cahaya terstruktur pada mesin scan 3D. |
+
+Setelah satu dipilih: isi `MOTION_DEFAULT` di skrip dengan key-nya, lalu hapus
+`div.scn-motions` di markup. Shader untuk motion yang tidak dipakai boleh ikut
+dihapus (fungsi `fx…` di `LIGHT_FRAG`).
+
+Kalau perangkat meminta animasi dikurangi (`prefers-reduced-motion`), efeknya
+berhenti di satu bingkai. Kalau WebGL tidak tersedia, kertas cukup diberi isian
+warna polos.
+
+## Alur lengkap (saat jepret dinyalakan lagi)
 
 ```
 kamera ──jepret──> hasil ──"Atur sudut"──> atur sudut ──> hasil
 ```
 
-- **Kamera** — kertas dideteksi terus-menerus dan diberi efek cahaya. Jepret
-  otomatis begitu kertas diam ±1,4 detik (bisa dimatikan lewat tombol
-  "Otomatis"), atau tekan tombol jepret.
 - **Hasil** — kertas yang sudah lurus. Tampilan: *Asli*, *Bersih* (bawaan:
   bayangan dan warna lampu dihilangkan, kertas jadi putih), *Hitam putih*.
   Ada *Putar*, *Atur sudut*, *Scan lagi*, *Simpan* (di HP membuka lembar
   bagikan, jadi bisa "Simpan gambar" ke galeri).
 - **Atur sudut** — geser empat titik sudut (ada kaca pembesar). Muncul sendiri
   kalau kertas tidak ketemu sama sekali.
-
-Tata letaknya menyesuaikan HP (tegak & miring), tablet, dan desktop: di HP
-miring kontrol pindah ke sisi kanan; di layar lebar hasil dan panelnya
-berdampingan.
-
-## Efek cahaya scan
-
-Bukan garis scan yang naik-turun, tapi "structured light" — cahaya yang
-diproyeksikan ke permukaan kertas dan ikut miring bersama kertasnya:
-
-1. **Kertas terdeteksi** — sekelilingnya meredup, kertas diselimuti cahaya biru
-   dingin, kisi titik cahaya mekar dari tengah kertas, titik sudut "mengunci".
-2. **Menunggu** — denyut cincin cahaya merambat dari tengah ke tepi.
-3. **Ditahan** — cincin cahaya mengembang dari tengah; bagian yang sudah
-   dilewati jadi bersih dan terang. Itulah progres jepret otomatis — tanpa bar
-   atau cincin progres terpisah.
-4. **Jepret** — kilau di kertas, lalu kertas yang sudah lurus "terangkat" dari
-   foto dan mendarat di layar hasil.
-
-Semuanya digambar di kanvas (`requestAnimationFrame`) dan Web Animations API,
-karena animasi CSS `@keyframes` / `[ngStyle]` di dalam layar `*ngIf` terbukti
-diam di platform. Kalau perangkat meminta animasi dikurangi
-(`prefers-reduced-motion`), efeknya jadi statis dan transisinya dilewati.
+- Saat jepret: kilau di kertas, lalu kertas yang sudah lurus "terangkat" dari
+  foto dan mendarat di layar hasil.
 
 ## Cara kerja (hasil riset)
 
 1. Frame kamera dikecilkan ke 384 px lalu dicari 4 sudut kertasnya dengan
    [scanic](https://github.com/marquaye/scanic) (MIT) memakai detektor ML
    DocCornerNet (~2 MB, diunduh sekali). Deteksinya berjalan di **Web Worker**,
-   jadi animasi tetap 60 fps.
+   jadi animasi tetap mulus.
 2. Saat jepret, deteksi diulang di foto resolusi penuh, lalu **sudutnya
    ditajamkan**: di sekitar tiap sisi dicari tepi kertas yang sebenarnya,
    ditarik garis lurus, dan garis-garisnya dipotongkan.
@@ -137,13 +154,18 @@ Semua ada di region **KONFIGURASI** paling atas di skrip `SCAN.html`.
 | Nama | Isi |
 | --- | --- |
 | `BUILD` | Naikkan setiap kali berkas diubah, lalu cek `__SCAN_BUILD` di halaman live. |
+| `ACCENT` | Warna cahaya scan dan aksen tombol pilihan (`#ED4835`). |
+| `CAPTURE_ENABLED` | `false` = tombol jepret belum memotret (tahap animasi). |
+| `MOTION_DEFAULT`, `this.motions` | Motion yang dipakai dan daftar pilihannya. |
 | `SCANIC_URL`, `ML_OPTIONS` | Library deteksi. Untuk host sendiri: salin `dist/` scanic dan paket `scanic-ml` ke S3 (CORS `*`), lalu arahkan ke sana (`ML_OPTIONS.assetBaseUrl`). |
 | `DOC_RATIO` | `"auto"` atau angka lebar / tinggi (`210 / 297` A4, `148 / 210` A5, `4 / 6` 4R). |
-| `AUTO_CAPTURE_DEFAULT`, `HOLD_MS` | Jepret otomatis dan lama kertas harus diam. |
 | `CAMERA_IDEAL` | Resolusi kamera yang diminta (bawaan 4K; browser memilih yang terdekat). |
 | `OUTPUT_MAX`, `JPEG_QUALITY`, `DEFAULT_FILTER` | Ukuran, kualitas, dan tampilan awal hasil. |
 | `ON_SCAN_READY` | Kait yang dipanggil setiap hasil siap — tempat mengirim hasil ke server, Gemini, atau cetak. |
 | `this.copy`, `this.labels` | Semua tulisan di layar. |
+
+Di region **Penyetelan**: `OUTSIDE_DIM` (gelapnya area di luar kertas) dan
+`LIGHT_SCALE_MAX` (resolusi kanvas cahaya).
 
 ## Aturan platform yang diikuti
 
@@ -157,17 +179,19 @@ Sama dengan template Gemini:
   callback async dibungkus `this.zone.run`.
 - Semua class diawali `scn-`; Bootstrap dipakai lewat class dan variabel
   `--bs-btn-*`.
-- Tidak ada teks status teknis di layar — diagnostik ke console.
+- Animasi tidak memakai CSS `@keyframes` / `[ngStyle]` (terbukti diam di
+  platform): cahaya scan digambar WebGL lewat `requestAnimationFrame`.
 
 ## Belum ada / langkah berikutnya
 
+- Pilih satu motion, lalu rancang reaksi saat kertas ditahan / dijepret untuk
+  motion itu, dan nyalakan lagi `CAPTURE_ENABLED`.
 - **Mode booth DSLR** (jembatan LOLBooth): foto Canon tinggal dilewatkan ke jalur
   yang sama dengan "Unggah foto" (deteksi → luruskan → hasil).
 - **Unggah ke platform + QR**: sambungkan `ON_SCAN_READY` ke alur unggah dari
   template Gemini.
 - **Host sendiri** scanic + model di S3 supaya tidak bergantung pada jsDelivr
   saat acara.
-- Uji di perangkat sungguhan: iPhone (Safari), Android (Chrome), tablet booth.
 
 ## Lisensi pihak ketiga
 
