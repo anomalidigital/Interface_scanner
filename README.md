@@ -20,6 +20,7 @@ Video: [tutorial](docs/demo-tutorial.mp4) · [scan berhasil + loading](docs/demo
 
 | Berkas | Untuk apa |
 | --- | --- |
+| `Final/` | **Berkas final siap pakai**: `SCAN.html` (kode, aset sudah tertanam) dan `assets/` (aset tutorial WebP). Salinan dari berkas di akar repo, diperbarui setiap rilis. |
 | `SCAN.html` | **Halaman yang ditempel ke CMS.** Satu blok gaya, satu `<main>` (sintaks Angular), satu blok skrip. Styling memakai Bootstrap 5.3 yang sudah dimuat platform. Aset tutorial sudah disematkan (WebP base64), jadi tetap satu berkas. |
 | `preview.html` | Harness pengembangan (Angular → Vue), sama seperti di template Gemini. **Jangan diunggah ke platform.** |
 | `index.html` | Pengalih ke `preview.html` (untuk GitHub Pages). |
@@ -93,11 +94,16 @@ selama `HOLD_MS` (1,2 detik). Saat itu:
 
 1. gambar kamera **membeku** (video dijeda), animasi Proyeksi tetap bergerak
    di atas kartu, jadi terasa sedang diproses;
-2. ajakan di bawah berganti jadi **loading sederhana**: lingkaran berputar +
-   "Memproses…" (`copy.loading`); tombol **?** disembunyikan dulu;
-3. sesudah `LOADING_DEMO_MS` (3,5 detik, **simulasi**) kamera jalan lagi.
-   Kartu yang sama baru bisa terbaca lagi setelah diangkat, atau setelah
-   5 detik.
+2. ajakan dan tombol **?** memudar, digantikan **kapsul loading** kaca: lencana
+   merah berisi titik halftone putih (bahasa yang sama dengan efek Proyeksi)
+   yang menyala dari tengah lalu terus berdenyut ke tepi, dan tulisan
+   "Menyiapkan foto kamu…" (`copy.loading`);
+3. sesudah `LOADING_DEMO_MS` (3,5 detik, **simulasi**) titiknya menyusut,
+   lencana jadi bulatan putih dengan centang merah (sama dengan lencana di
+   tutorial), tulisannya jadi "Foto kamu siap" (`copy.ready`), dan kapsulnya
+   menyusut halus ke lebar tulisan baru;
+4. kapsul turun, kamera jalan lagi, ajakan dan tombol **?** kembali. Kartu
+   yang sama baru bisa terbaca lagi setelah diangkat, atau setelah 5 detik.
 
 Frame yang dibekukan disimpan di `__SCAN.still` dan sudut kartunya di
 `__SCAN.corners`. Saat proses sungguhan sudah ada, ganti bagian "tunggu
@@ -193,7 +199,7 @@ Semua ada di region **KONFIGURASI** paling atas di skrip `SCAN.html`.
 | `CAMERA_IDEAL` | Resolusi kamera yang diminta (bawaan 4K; browser memilih yang terdekat). |
 | `OUTPUT_MAX`, `JPEG_QUALITY`, `DEFAULT_FILTER` | Ukuran, kualitas, dan tampilan awal hasil. |
 | `ON_SCAN_READY` | Kait yang dipanggil setiap hasil siap — tempat mengirim hasil ke server, Gemini, atau cetak. |
-| `this.copy`, `this.labels` | Semua tulisan di layar, termasuk ajakan `copy.prompt` dan `copy.loading`. |
+| `this.copy`, `this.labels` | Semua tulisan di layar, termasuk ajakan `copy.prompt`, loading `copy.loading`, dan `copy.ready`. |
 
 Di region **Penyetelan**: `OUTSIDE_DIM` (gelapnya area di luar kertas),
 `LIGHT_SCALE_MAX` (resolusi kanvas cahaya), `AUTO_MIN_AREA`,
