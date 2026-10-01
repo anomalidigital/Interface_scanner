@@ -232,7 +232,7 @@ body {
    Tutorial — animasi garis tanpa teks di atas kamera. Latarnya diredupkan dan
    diburamkan supaya mata langsung ke animasinya. Gambarnya dibangun JS
    (region "Tutorial"), bukan ditulis di markup. "Lewati" ada tepat di bawah
-   animasinya, rata kanan.
+   animasinya, di tengah.
    -------------------------------------------------------------------------- */
 .scn-tut {
   position: absolute;
@@ -268,7 +268,7 @@ body {
 
 .scn-tut__foot {
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
   margin-top: 1.25rem;
 }
 
@@ -728,7 +728,7 @@ this.pageMain = async () => {
   //#region KONFIGURASI  <<< YANG BIASANYA DIUBAH ADA DI SINI
   /* Naikkan tiap kali berkas ini diubah. Cek versi yang sedang live dari
      console halaman: window.__SCAN_BUILD */
-  const BUILD = "scan-261001-5";
+  const BUILD = "scan-261001-6";
 
   const query = this.activatedRoute?.snapshot?.queryParams ?? {};
 

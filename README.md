@@ -69,7 +69,7 @@ digerakkan `requestAnimationFrame` — bukan CSS `@keyframes`, yang diam di
 platform. Supaya kartu di belakang tertutup rapi, siluet tangan + HP diisi
 gelap dan layarnya dibuat tembus pandang (diolah dari PNG aslinya).
 
-**Lewati** ada di kanan, tepat di bawah animasinya, dan langsung menutup
+**Lewati** ada di tengah, tepat di bawah animasinya, dan langsung menutup
 tutorial. Tombol **?** di pojok kanan bawah layar kamera membukanya lagi.
 
 ## Layar kamera
