@@ -268,6 +268,57 @@ body {
 }
 
 /* --------------------------------------------------------------------------
+   Tutorial — animasi garis tanpa teks di atas kamera. Latarnya diredupkan dan
+   diburamkan supaya mata langsung ke animasinya. Gambarnya dibangun JS
+   (region "Tutorial"), bukan ditulis di markup.
+   -------------------------------------------------------------------------- */
+.scn-tut {
+  position: absolute;
+  z-index: 10;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(4rem + var(--scn-safe-t)) 1.5rem calc(5.5rem + var(--scn-safe-b));
+  background: rgba(0, 0, 0, 0.74);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+.scn-tut__art {
+  width: min(90vw, 27rem, calc((100vh - 9rem) * 300 / 380));
+  width: min(90vw, 27rem, calc((100dvh - 9rem) * 300 / 380));
+  aspect-ratio: 300 / 380;
+}
+
+.scn-tut__art svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.scn-host .btn.scn-tut__skip {
+  --bs-btn-color: var(--scn-paper);
+  --bs-btn-bg: transparent;
+  --bs-btn-border-color: transparent;
+  --bs-btn-hover-color: var(--scn-paper);
+  --bs-btn-hover-bg: rgba(255, 255, 255, 0.1);
+  --bs-btn-hover-border-color: transparent;
+  --bs-btn-active-color: var(--scn-paper);
+  --bs-btn-active-bg: rgba(255, 255, 255, 0.16);
+  --bs-btn-active-border-color: transparent;
+  --bs-btn-padding-x: 0.9rem;
+  --bs-btn-padding-y: 0.65rem;
+  --bs-btn-font-size: 0.9375rem;
+  --bs-btn-font-weight: 600;
+  --bs-btn-border-radius: 999px;
+  position: absolute;
+  left: max(0.6rem, var(--scn-safe-l));
+  bottom: calc(1rem + var(--scn-safe-b));
+}
+
+/* --------------------------------------------------------------------------
    Tombol: Bootstrap .btn, warnanya diatur lewat variabel --bs-btn-*
    -------------------------------------------------------------------------- */
 .scn-host .btn.scn-glass {
@@ -537,6 +588,15 @@ body {
     max-width: calc(100% - 9rem);
   }
 
+  .scn-tut {
+    padding: calc(0.75rem + var(--scn-safe-t)) 6rem calc(0.75rem + var(--scn-safe-b));
+  }
+
+  .scn-tut__art {
+    width: min(90vw, 27rem, calc((100vh - 1.5rem) * 300 / 380));
+    width: min(90vw, 27rem, calc((100dvh - 1.5rem) * 300 / 380));
+  }
+
   .scn-split {
     flex-direction: row;
   }
@@ -624,9 +684,21 @@ body {
 
         <button type="button" class="scn-shutter" [disabled]="cameraState !== 'ready' || isBusy" [attr.aria-label]="labels.shutter" (click)="capture()"><span></span></button>
 
-        <div class="scn-side scn-side--end"></div>
+        <div class="scn-side scn-side--end">
+          <!-- Membuka lagi tutorial -->
+          <button type="button" class="btn scn-glass scn-round" [attr.aria-label]="labels.help" (click)="openTutorial()">
+            <svg class="scn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.2 9.2a2.9 2.9 0 0 1 5.6 1c0 2-2.8 2.4-2.8 4.4" /><path d="M12 18.4h.01" /></svg>
+          </button>
+        </div>
       </div>
     </footer>
+
+    <!-- TUTORIAL — animasi garis tanpa teks, berulang sampai "Lewati".
+         Gambarnya dibangun JS ke dalam #scnTutorial (region "Tutorial"). -->
+    <div class="scn-tut" *ngIf="tutorialOpen" role="dialog" aria-modal="true" [attr.aria-label]="labels.help">
+      <div class="scn-tut__art" id="scnTutorial"></div>
+      <button type="button" class="btn scn-tut__skip" (click)="closeTutorial()">{{ labels.skip }}</button>
+    </div>
   </section>
 
   <!-- ==========================================================
@@ -727,7 +799,7 @@ this.pageMain = async () => {
   //#region KONFIGURASI  <<< YANG BIASANYA DIUBAH ADA DI SINI
   /* Naikkan tiap kali berkas ini diubah. Cek versi yang sedang live dari
      console halaman: window.__SCAN_BUILD */
-  const BUILD = "scan-261001-2";
+  const BUILD = "scan-261001-3";
 
   const query = this.activatedRoute?.snapshot?.queryParams ?? {};
 
@@ -743,6 +815,10 @@ this.pageMain = async () => {
      Setelah satu dipilih: isi MOTION_DEFAULT dengan key-nya, lalu hapus
      deret tombol .scn-motions di markup. Bisa juga dipilih lewat URL,
      misalnya ?motion=termal */
+  /* Tutorial animasi (tanpa teks) muncul begitu halaman dibuka, berulang
+     sampai tamu menekan "Lewati". Tombol "?" membukanya lagi. */
+  const TUTORIAL_ON_START = true;
+
   const MOTION_DEFAULT = "piksel";
   this.motions = [
     { key: "piksel", label: "Piksel" },
@@ -803,6 +879,8 @@ this.pageMain = async () => {
     torch: "Lampu kilat",
     switchCamera: "Ganti kamera",
     tryAgain: "Coba lagi",
+    skip: "Lewati",
+    help: "Cara scan",
     motionGroup: "Pilihan animasi scan",
     filterGroup: "Tampilan hasil",
     rotate: "Putar",
@@ -844,6 +922,7 @@ this.pageMain = async () => {
   this.torchAvailable = false;
   this.torchOn = false;
   this.motion = this.motions.some((m) => m.key === query.motion) ? query.motion : MOTION_DEFAULT;
+  this.tutorialOpen = TUTORIAL_ON_START && !("notutorial" in query);
   this.filter = DEFAULT_FILTER;
   this.resultUrl = "";
   this.toast = "";
@@ -1698,6 +1777,15 @@ onmessage = async (event) => {
     const dt = E.lastNow ? Math.min(64, now - E.lastNow) : 16;
     E.lastNow = now;
 
+    /* Selama tutorial tampil: tidak ada deteksi dan tidak ada cahaya di
+       belakangnya — mata hanya ke tutorial. */
+    if (this.tutorialOpen) {
+      ensureLayer(stage);
+      renderLight(null, now);
+      Object.assign(E, { target: null, shown: null, alpha: 0, hits: 0, misses: 0 });
+      return;
+    }
+
     if (!E.frozen && !E.detecting && canDetect() && v.videoWidth && now - E.lastDetect >= E.detectGap) {
       E.detecting = true;
       E.lastDetect = now;
@@ -2089,6 +2177,209 @@ void main() {
     if (key === this.motion) return;
     this.motion = key;
     E.lockAt = performance.now(); // efek "muncul" diulang supaya pergantiannya terasa
+  };
+  //#endregion
+
+  //#region Tutorial (animasi garis, tanpa teks)
+  /* Cerita animasinya, berulang tiap ~5,4 detik:
+       1. kartu foto tergeletak (garisnya tergambar sendiri di putaran
+          pertama)
+       2. HP masuk dari kanan bawah, lalu menyesuaikan posisi sampai kartu
+          pas di layarnya — layarnya memperlihatkan kartu di bawahnya
+       3. kartu di layar menyala merah piksel demi piksel, lalu tanda centang
+       4. HP pergi, ulang dari awal
+     Diputar requestAnimationFrame (bukan CSS @keyframes, yang diam di
+     platform) dan berhenti sendiri begitu tutorial ditutup.
+
+     ILUSTRASI SEMENTARA: garis HP + kartu digambar di sini sebagai SVG.
+     Begitu aset garis dari tim desain diekspor ulang (SVG / PNG
+     transparan), cukup ganti isi drawCard() dan bagian HP di
+     buildTutorialArt() — urutan animasinya tetap. */
+  const SVG_NS = "http://www.w3.org/2000/svg";
+  const TUT_LOOP = 5400;
+  const TUT_CARD = { x: 92, y: 103, w: 116, h: 174, cx: 150, cy: 190 };
+  const TUT_POSE = {
+    a: { x: 96, y: 250, r: 16, o: 0 }, // di luar, kanan bawah
+    b: { x: 26, y: 38, r: 7, o: 1 }, // hampir pas
+    c: { x: 0, y: 0, r: 0, o: 1 }, // pas di atas kartu
+    d: { x: -34, y: -300, r: -12, o: 0 }, // pergi ke atas
+  };
+  const TUT = { raf: 0, parts: null, start: 0, onKey: null, closing: false };
+
+  const svgEl = (tag, attrs, parent) => {
+    const el = document.createElementNS(SVG_NS, tag);
+    for (const [key, value] of Object.entries(attrs)) el.setAttribute(key, String(value));
+    parent?.appendChild(el);
+    return el;
+  };
+
+  /* Kartu foto booth: bingkai, foto berisi dua orang + lampu gantung, dan
+     tiga garis keterangan (bukan teks). */
+  const drawCard = (g, opacity) => {
+    const line = { fill: "none", stroke: "#fff", "stroke-width": 2, "stroke-linecap": "round", "stroke-linejoin": "round", "stroke-opacity": opacity };
+    const dot = { fill: "#fff", "fill-opacity": opacity };
+    const els = [
+      svgEl("rect", { x: 92, y: 103, width: 116, height: 174, rx: 3, ...line }, g),
+      svgEl("rect", { x: 101, y: 112, width: 98, height: 120, rx: 2, ...line }, g),
+      svgEl("path", { d: "M104 121 Q150 140 196 121", ...line, "stroke-width": 1.4 }, g),
+      svgEl("circle", { cx: 133, cy: 162, r: 10, ...line }, g),
+      svgEl("path", { d: "M114 232 C114 199 152 199 152 232", ...line }, g),
+      svgEl("circle", { cx: 167, cy: 168, r: 9, ...line }, g),
+      svgEl("path", { d: "M150 232 C150 206 185 206 185 232", ...line }, g),
+      svgEl("path", { d: "M112 112 V127 M112 131 l1.6 3.4 3.6 0.5 -2.6 2.5 0.6 3.6 -3.2 -1.7 -3.2 1.7 0.6 -3.6 -2.6 -2.5 3.6 -0.5 z", ...line, "stroke-width": 1.4 }, g),
+      svgEl("path", { d: "M101 247 H164 M101 258 H146 M101 269 H130", ...line }, g),
+    ];
+    for (const [cx, cy] of [
+      [114, 125],
+      [127, 129.5],
+      [140, 131.5],
+      [153, 131.5],
+      [166, 130],
+      [179, 127],
+      [191, 123],
+    ])
+      svgEl("circle", { cx, cy, r: 1.8, ...dot }, g);
+    return els;
+  };
+
+  const buildTutorialArt = (host) => {
+    host.textContent = "";
+    const svg = svgEl("svg", { viewBox: "0 0 300 380", "aria-hidden": "true" }, host);
+    const defs = svgEl("defs", {}, svg);
+    const clip = svgEl("clipPath", { id: "scnTutClip" }, defs);
+    svgEl("rect", { x: -75, y: -152, width: 150, height: 304, rx: 20 }, clip);
+    const blur = svgEl("filter", { id: "scnTutShadow", x: "-50%", y: "-50%", width: "200%", height: "200%" }, defs);
+    svgEl("feGaussianBlur", { stdDeviation: 12 }, blur);
+
+    /* kartu di "meja" */
+    const table = svgEl("g", {}, svg);
+    const tableLines = drawCard(table, 0.55).map((el) => {
+      const len = el.getTotalLength ? el.getTotalLength() : 0;
+      el.style.strokeDasharray = String(len);
+      return { el, len };
+    });
+
+    /* HP: bayangan, badan (menutupi kartu di belakangnya), layar yang
+       memperlihatkan kartu di bawahnya, lalu garis luarnya */
+    const phone = svgEl("g", {}, svg);
+    svgEl("rect", { x: -74, y: -144, width: 164, height: 318, rx: 26, fill: "#000", "fill-opacity": 0.6, filter: "url(#scnTutShadow)" }, phone);
+    svgEl("rect", { x: -82, y: -159, width: 164, height: 318, rx: 26, fill: "#0c0c0f" }, phone);
+    const screen = svgEl("g", { "clip-path": "url(#scnTutClip)" }, phone);
+    svgEl("rect", { x: -75, y: -152, width: 150, height: 304, fill: "#18181d" }, screen);
+    const world = svgEl("g", {}, screen);
+    drawCard(world, 1);
+    const fill = svgEl("rect", { x: TUT_CARD.x, y: TUT_CARD.y, width: TUT_CARD.w, height: TUT_CARD.h, rx: 3, fill: ACCENT, opacity: 0 }, world);
+    const pix = [];
+    const cols = 8;
+    const rows = 12;
+    const cw = TUT_CARD.w / cols;
+    const ch = TUT_CARD.h / rows;
+    const size = Math.min(cw, ch) * 0.62;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const el = svgEl("rect", { x: TUT_CARD.x + c * cw + (cw - size) / 2, y: TUT_CARD.y + r * ch + (ch - size) / 2, width: size, height: size, rx: 1.5, fill: ACCENT, opacity: 0 }, world);
+        pix.push({ el, delay: Math.random() });
+      }
+    }
+    const check = svgEl("path", { d: "M136 191 l10 10 19 -21", fill: "none", stroke: "#fff", "stroke-width": 6, "stroke-linecap": "round", "stroke-linejoin": "round", opacity: 0 }, world);
+    const checkLen = check.getTotalLength ? check.getTotalLength() : 0;
+    check.style.strokeDasharray = String(checkLen);
+
+    const outline = { fill: "none", stroke: "#fff", "stroke-width": 2.4, "stroke-linecap": "round", "stroke-linejoin": "round" };
+    svgEl("rect", { x: -82, y: -159, width: 164, height: 318, rx: 26, ...outline }, phone);
+    svgEl("rect", { x: -18, y: -145, width: 36, height: 10, rx: 5, fill: "#fff", "fill-opacity": 0.9 }, phone);
+    svgEl("path", { d: "M-84.5 -92 v24 M-84.5 -58 v24 M84.5 -72 v40", ...outline, "stroke-width": 3 }, phone);
+
+    return { svg, tableLines, phone, world, fill, pix, check, checkLen };
+  };
+
+  const poseAt = (t) => {
+    const mix = (p, q, k) => ({ x: p.x + (q.x - p.x) * k, y: p.y + (q.y - p.y) * k, r: p.r + (q.r - p.r) * k, o: p.o + (q.o - p.o) * k });
+    const { a, b, c, d } = TUT_POSE;
+    if (t < 900) return mix(a, b, 1 - Math.pow(1 - t / 900, 3));
+    if (t < 1700) return mix(b, c, easeInOut((t - 900) / 800));
+    if (t < 3900) return c;
+    if (t < 4600) return mix(c, d, Math.pow((t - 3900) / 700, 3));
+    return d;
+  };
+
+  const tutorialFrame = (now) => {
+    TUT.raf = requestAnimationFrame(tutorialFrame);
+    const P = TUT.parts;
+    if (!P || !P.svg.isConnected) {
+      stopTutorial();
+      return;
+    }
+    const elapsed = now - TUT.start;
+    const t = REDUCED ? 3400 : elapsed % TUT_LOOP;
+
+    // 1. garis kartu di meja tergambar sendiri (putaran pertama saja)
+    const drawn = REDUCED ? 1 : 1 - Math.pow(1 - clamp(elapsed / 900, 0, 1), 3);
+    for (const line of P.tableLines) line.el.style.strokeDashoffset = String(line.len * (1 - drawn));
+
+    // 2. HP bergerak; isi layarnya tetap di tempat (kartu di bawahnya)
+    const pose = poseAt(t);
+    const px = TUT_CARD.cx + pose.x;
+    const py = TUT_CARD.cy + pose.y;
+    P.phone.setAttribute("transform", `translate(${px.toFixed(2)} ${py.toFixed(2)}) rotate(${pose.r.toFixed(2)})`);
+    P.phone.setAttribute("opacity", pose.o.toFixed(3));
+    P.world.setAttribute("transform", `rotate(${(-pose.r).toFixed(2)}) translate(${(-px).toFixed(2)} ${(-py).toFixed(2)})`);
+
+    // 3. kartu di layar menyala piksel demi piksel, lalu satu denyut dan centang
+    for (const p of P.pix) {
+      const t0 = 1700 + p.delay * 600;
+      let a = clamp((t - t0) / 150, 0, 1);
+      a *= 1 - 0.4 * clamp((t - t0 - 150) / 300, 0, 1);
+      a *= 1 - 0.85 * clamp((t - 3000) / 350, 0, 1);
+      p.el.setAttribute("opacity", (0.9 * a).toFixed(3));
+    }
+    const pulse = Math.sin(Math.PI * clamp((t - 3000) / 450, 0, 1));
+    P.fill.setAttribute("opacity", (0.24 * clamp((t - 2400) / 400, 0, 1) + 0.28 * pulse).toFixed(3));
+    const tick = clamp((t - 3050) / 420, 0, 1);
+    P.check.style.strokeDashoffset = String(P.checkLen * (1 - (1 - Math.pow(1 - tick, 3))));
+    P.check.setAttribute("opacity", tick > 0 ? "1" : "0");
+  };
+
+  const stopTutorial = () => {
+    cancelAnimationFrame(TUT.raf);
+    TUT.raf = 0;
+    TUT.parts = null;
+    if (TUT.onKey) document.removeEventListener("keydown", TUT.onKey);
+    TUT.onKey = null;
+  };
+
+  const startTutorial = async () => {
+    const host = await waitFor("#scnTutorial", true);
+    if (!host || !this.tutorialOpen) return;
+    stopTutorial();
+    TUT.parts = buildTutorialArt(host);
+    TUT.start = performance.now();
+    TUT.raf = requestAnimationFrame(tutorialFrame);
+    TUT.onKey = (event) => {
+      if (event.key === "Escape") this.closeTutorial();
+    };
+    document.addEventListener("keydown", TUT.onKey);
+    if (!REDUCED) host.closest(".scn-tut")?.animate?.([{ opacity: 0 }, { opacity: 1 }], { duration: 280, easing: "ease-out" });
+  };
+
+  this.openTutorial = () => {
+    if (this.tutorialOpen) return;
+    ui(() => (this.tutorialOpen = true));
+    startTutorial();
+  };
+
+  this.closeTutorial = async () => {
+    if (!this.tutorialOpen || TUT.closing) return;
+    TUT.closing = true;
+    const box = document.querySelector(".scn-tut");
+    if (box?.animate && !REDUCED) {
+      try {
+        await box.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, easing: "ease-in", fill: "forwards" }).finished;
+      } catch {}
+    }
+    stopTutorial();
+    TUT.closing = false;
+    ui(() => (this.tutorialOpen = false));
   };
   //#endregion
 
@@ -2796,7 +3087,10 @@ void main() {
   });
   /* Ditunda satu tick supaya template sudah dirender sebelum kamera minta
      elemen <video>-nya. */
-  setTimeout(() => this.startCamera(), 0);
+  setTimeout(() => {
+    this.startCamera();
+    if (this.tutorialOpen) startTutorial();
+  }, 0);
 };
 
 this.pageMain();

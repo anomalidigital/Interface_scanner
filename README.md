@@ -10,8 +10,9 @@ kertasnya, rata seperti hasil mesin scan.
 > dibandingkan langsung di HP.
 
 ![Lima pilihan motion scan: piksel, termal, jejak, partikel, proyeksi](docs/demo-motions.webp)
+![Tutorial: HP disejajarkan di atas kartu, kartu menyala lalu dicentang](docs/demo-tutorial.webp)
 
-Versi video: [docs/demo-motions.mp4](docs/demo-motions.mp4).
+Versi video motion: [docs/demo-motions.mp4](docs/demo-motions.mp4).
 
 ## Isi repo
 
@@ -21,7 +22,7 @@ Versi video: [docs/demo-motions.mp4](docs/demo-motions.mp4).
 | `preview.html` | Harness pengembangan (Angular → Vue), sama seperti di template Gemini. **Jangan diunggah ke platform.** |
 | `index.html` | Pengalih ke `preview.html` (untuk GitHub Pages). |
 | `test/` | Foto contoh untuk kamera tiruan. |
-| `docs/` | Rekaman kelima pilihan motion (WebP animasi + MP4). |
+| `docs/` | Rekaman pilihan motion (WebP animasi + MP4) dan tutorial. |
 
 ## Menjalankan
 
@@ -39,6 +40,7 @@ Di HP: buka lewat GitHub Pages repo ini (kamera HP hanya bisa lewat **https**).
 | `&shake=2` | Besar goyangan tangan tiruan (px). |
 | `&walk` | Kertas keluar-masuk frame tiap 10 detik. |
 | `?capture` | Menyalakan alur jepret → hasil untuk dicoba, tanpa mengubah `CAPTURE_ENABLED`. |
+| `?notutorial` | Tutorial tidak muncul saat halaman dibuka (untuk pengujian). |
 | `?IsUpload` | Tombol "Unggah foto" di layar kamera (sama dengan halaman Gemini). |
 | `?noworker` | Menguji jalur cadangan: deteksi di thread utama. |
 
@@ -53,6 +55,29 @@ Di console: `__state` (state halaman), `__SCAN` (mesin), `__SCAN_BUILD` (versi).
   kertas yang terdeteksi ditandai **isian** cahaya, sekelilingnya sedikit
   diredupkan.
 - Deret tombol di atas tombol jepret = **pilihan motion (sementara)**.
+- Tombol **?** di pojok kanan bawah membuka lagi tutorial.
+
+## Tutorial
+
+Muncul begitu halaman dibuka (`TUTORIAL_ON_START`), di atas kamera yang
+diredupkan dan diburamkan supaya fokus. Isinya animasi garis **tanpa teks**,
+berulang terus (~5,4 detik per putaran):
+
+1. kartu foto tergeletak (garisnya tergambar sendiri di putaran pertama);
+2. HP masuk dari kanan bawah dan menyesuaikan posisi sampai kartu pas di
+   layarnya — layarnya "tembus" memperlihatkan kartu di bawahnya;
+3. kartu di layar menyala merah piksel demi piksel, lalu muncul centang;
+4. HP pergi, ulang dari awal.
+
+**Lewati** (kiri bawah) langsung menutupnya; tombol **?** membukanya lagi.
+Animasinya digerakkan `requestAnimationFrame`, bukan CSS `@keyframes`.
+
+> **Ilustrasi masih sementara.** Garis HP + kartu digambar di skrip (SVG).
+> Berkas di `Tutorial/1x` (`Asset 3.png`, `Asset 4.png`) ternyata kosong —
+> semua pikselnya putih dan tidak ada transparansi, jadi garisnya hilang
+> waktu diekspor. Begitu diekspor ulang (paling bagus **SVG**, atau PNG dengan
+> latar transparan), tinggal ganti isi `drawCard()` dan bagian HP di
+> `buildTutorialArt()`; urutan animasinya tetap.
 
 ## Pilihan motion
 
@@ -156,6 +181,7 @@ Semua ada di region **KONFIGURASI** paling atas di skrip `SCAN.html`.
 | `BUILD` | Naikkan setiap kali berkas diubah, lalu cek `__SCAN_BUILD` di halaman live. |
 | `ACCENT` | Warna cahaya scan dan aksen tombol pilihan (`#ED4835`). |
 | `CAPTURE_ENABLED` | `false` = tombol jepret belum memotret (tahap animasi). |
+| `TUTORIAL_ON_START` | Tutorial muncul saat halaman dibuka. |
 | `MOTION_DEFAULT`, `this.motions` | Motion yang dipakai dan daftar pilihannya. |
 | `SCANIC_URL`, `ML_OPTIONS` | Library deteksi. Untuk host sendiri: salin `dist/` scanic dan paket `scanic-ml` ke S3 (CORS `*`), lalu arahkan ke sana (`ML_OPTIONS.assetBaseUrl`). |
 | `DOC_RATIO` | `"auto"` atau angka lebar / tinggi (`210 / 297` A4, `148 / 210` A5, `4 / 6` 4R). |
