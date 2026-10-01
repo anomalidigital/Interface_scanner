@@ -1,0 +1,2691 @@
+<style>
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap");
+
+/* ==========================================================================
+   INTERFACE SCANNER — gaya
+
+   Bootstrap 5.3 (sudah dimuat platform) dipakai untuk tombol, grup tombol,
+   dan utilitas jarak/flex. Aturan di bawah ini hanya untuk yang memang tidak
+   ada di Bootstrap: layar penuh ala aplikasi kamera, kotak kamera, tombol
+   jepret, dan permukaan kaca.
+
+   Semua class diawali "scn-" supaya tidak bentrok dengan tema platform.
+
+   Efek cahaya scan TIDAK ada di sini. Semuanya digambar JS di kanvas (region
+   "Lapisan cahaya" di skrip), karena animasi CSS @keyframes dan [ngStyle] di
+   dalam layar *ngIf terbukti diam di platform ini (lihat catatan template
+   Gemini).
+   ========================================================================== */
+
+.scn-host {
+  --scn-ink: #000;
+  --scn-paper: #fff;
+  --scn-mist: rgba(255, 255, 255, 0.66);
+  --scn-glass: rgba(30, 30, 36, 0.58);
+  --scn-line: rgba(255, 255, 255, 0.14);
+  --scn-violet: #7c5cff;
+  --scn-blue: #3e8bff;
+  --scn-mint: #34e3c4;
+  --scn-font: "Poppins", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --scn-safe-t: env(safe-area-inset-top, 0px);
+  --scn-safe-r: env(safe-area-inset-right, 0px);
+  --scn-safe-b: env(safe-area-inset-bottom, 0px);
+  --scn-safe-l: env(safe-area-inset-left, 0px);
+
+  position: fixed;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: var(--scn-ink);
+  color: var(--scn-paper);
+  font-family: var(--scn-font);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Kiosk tidak boleh bisa digulir: sisa halaman platform (nav / footer) tidak
+   boleh menambah tinggi dokumen. */
+html,
+body {
+  overflow: hidden !important;
+  overscroll-behavior: none;
+  background: #000;
+}
+
+.scn-host *,
+.scn-host *::before,
+.scn-host *::after {
+  box-sizing: border-box;
+}
+
+/* :where() supaya reset ini ber-specificity nol dan tidak mengalahkan
+   aturan satu class di bawahnya. */
+.scn-host :where(h1, h2, p) {
+  margin: 0;
+}
+
+.scn-host :where(button, input, label) {
+  font-family: inherit;
+}
+
+.scn-host :focus-visible,
+.scn-host .btn:focus-visible {
+  outline: 2px solid var(--scn-blue);
+  outline-offset: 3px;
+  box-shadow: none;
+}
+
+/* --------------------------------------------------------------------------
+   Kerangka layar
+   -------------------------------------------------------------------------- */
+.scn-screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.scn-bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 3.5rem;
+  padding: calc(0.5rem + var(--scn-safe-t)) max(1rem, var(--scn-safe-r)) 0.5rem max(1rem, var(--scn-safe-l));
+}
+
+.scn-title {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+.scn-sub {
+  max-width: 46ch;
+  color: var(--scn-mist);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+/* --------------------------------------------------------------------------
+   Kamera
+   -------------------------------------------------------------------------- */
+.scn-stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  background: #000;
+  isolation: isolate;
+}
+
+.scn-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+}
+
+.scn-hint {
+  position: absolute;
+  z-index: 2;
+  top: 0.875rem;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100% - 2rem);
+  padding: 0.5rem 1.05rem;
+  border: 1px solid var(--scn-line);
+  border-radius: 999px;
+  background: var(--scn-glass);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  backdrop-filter: blur(16px) saturate(150%);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+.scn-state {
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  padding: 2rem;
+  text-align: center;
+}
+
+.scn-state p {
+  max-width: 34ch;
+  color: var(--scn-mist);
+  font-size: 0.9375rem;
+  line-height: 1.55;
+}
+
+.scn-controls {
+  flex: none;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.125rem max(1.25rem, var(--scn-safe-r)) calc(1.125rem + var(--scn-safe-b)) max(1.25rem, var(--scn-safe-l));
+}
+
+.scn-side {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.scn-side--end {
+  justify-content: flex-end;
+}
+
+.scn-shutter {
+  display: grid;
+  place-items: center;
+  width: 4.75rem;
+  height: 4.75rem;
+  padding: 0;
+  border: 0.25rem solid var(--scn-paper);
+  border-radius: 50%;
+  background: transparent;
+  transition: transform 0.12s ease, opacity 0.2s ease;
+}
+
+.scn-shutter span {
+  display: block;
+  width: 3.6rem;
+  height: 3.6rem;
+  border-radius: 50%;
+  background: var(--scn-paper);
+}
+
+.scn-shutter:active:not(:disabled) {
+  transform: scale(0.93);
+}
+
+.scn-shutter:disabled {
+  opacity: 0.35;
+}
+
+/* --------------------------------------------------------------------------
+   Tombol: Bootstrap .btn, warnanya diatur lewat variabel --bs-btn-*
+   -------------------------------------------------------------------------- */
+.scn-host .btn.scn-glass {
+  --bs-btn-color: var(--scn-paper);
+  --bs-btn-bg: var(--scn-glass);
+  --bs-btn-border-color: var(--scn-line);
+  --bs-btn-hover-color: var(--scn-paper);
+  --bs-btn-hover-bg: rgba(255, 255, 255, 0.14);
+  --bs-btn-hover-border-color: rgba(255, 255, 255, 0.22);
+  --bs-btn-active-color: var(--scn-paper);
+  --bs-btn-active-bg: rgba(255, 255, 255, 0.2);
+  --bs-btn-active-border-color: rgba(255, 255, 255, 0.28);
+  --bs-btn-disabled-color: var(--scn-paper);
+  --bs-btn-disabled-bg: var(--scn-glass);
+  --bs-btn-disabled-border-color: var(--scn-line);
+  --bs-btn-padding-x: 1rem;
+  --bs-btn-padding-y: 0.55rem;
+  --bs-btn-font-size: 0.875rem;
+  --bs-btn-font-weight: 500;
+  --bs-btn-border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  backdrop-filter: blur(16px) saturate(150%);
+}
+
+.scn-host .btn.scn-solid {
+  --bs-btn-color: #000;
+  --bs-btn-bg: var(--scn-paper);
+  --bs-btn-border-color: var(--scn-paper);
+  --bs-btn-hover-color: #000;
+  --bs-btn-hover-bg: #e8e8ee;
+  --bs-btn-hover-border-color: #e8e8ee;
+  --bs-btn-active-color: #000;
+  --bs-btn-active-bg: #d9d9e2;
+  --bs-btn-active-border-color: #d9d9e2;
+  --bs-btn-disabled-color: #000;
+  --bs-btn-disabled-bg: var(--scn-paper);
+  --bs-btn-disabled-border-color: var(--scn-paper);
+  --bs-btn-disabled-opacity: 0.45;
+  --bs-btn-padding-x: 1.25rem;
+  --bs-btn-padding-y: 0.8rem;
+  --bs-btn-font-size: 0.9375rem;
+  --bs-btn-font-weight: 600;
+  --bs-btn-border-radius: 999px;
+  white-space: nowrap;
+}
+
+.scn-host .btn.scn-lg {
+  --bs-btn-padding-x: 1.25rem;
+  --bs-btn-padding-y: 0.8rem;
+  --bs-btn-font-size: 0.9375rem;
+}
+
+.scn-host .btn.scn-round {
+  --bs-btn-padding-x: 0;
+  --bs-btn-padding-y: 0;
+  width: 2.75rem;
+  height: 2.75rem;
+}
+
+.scn-host .btn.scn-round.is-on {
+  --bs-btn-color: #000;
+  --bs-btn-bg: var(--scn-paper);
+  --bs-btn-hover-color: #000;
+  --bs-btn-hover-bg: #e8e8ee;
+}
+
+.scn-icon {
+  flex: none;
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+/* Penanda "Otomatis": cincin kosong = mati, titik spektral = menyala */
+.scn-dot {
+  flex: none;
+  width: 0.5rem;
+  height: 0.5rem;
+  border: 1.5px solid rgba(255, 255, 255, 0.7);
+  border-radius: 50%;
+}
+
+.is-on > .scn-dot {
+  border: 0;
+  background: linear-gradient(135deg, var(--scn-mint), var(--scn-blue) 55%, var(--scn-violet));
+  box-shadow: 0 0 0.6rem rgba(62, 139, 255, 0.95);
+}
+
+/* --------------------------------------------------------------------------
+   Hasil & atur sudut (keduanya: area gambar + panel)
+   -------------------------------------------------------------------------- */
+.scn-split {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.scn-view {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1.25rem 1rem;
+}
+
+.scn-sheet {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 2px;
+  background: #fff;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 1.5rem 3.5rem -1rem rgba(0, 0, 0, 0.9);
+  transition: opacity 0.2s ease;
+}
+
+.scn-sheet.is-busy {
+  opacity: 0.45;
+}
+
+.scn-editor {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 1rem;
+  overflow: hidden;
+}
+
+.scn-panel {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.25rem max(1.25rem, var(--scn-safe-r)) calc(1.25rem + var(--scn-safe-b)) max(1.25rem, var(--scn-safe-l));
+}
+
+.scn-host .scn-segment {
+  display: flex;
+  width: 100%;
+  padding: 0.25rem;
+  border: 1px solid var(--scn-line);
+  border-radius: 999px;
+  background: var(--scn-glass);
+}
+
+.scn-host .scn-segment > .btn {
+  --bs-btn-color: var(--scn-mist);
+  --bs-btn-bg: transparent;
+  --bs-btn-border-color: transparent;
+  --bs-btn-hover-color: var(--scn-paper);
+  --bs-btn-hover-bg: transparent;
+  --bs-btn-hover-border-color: transparent;
+  --bs-btn-active-color: #000;
+  --bs-btn-active-bg: var(--scn-paper);
+  --bs-btn-active-border-color: var(--scn-paper);
+  --bs-btn-padding-x: 0.5rem;
+  --bs-btn-padding-y: 0.5rem;
+  --bs-btn-font-size: 0.875rem;
+  --bs-btn-font-weight: 500;
+  flex: 1 1 0;
+  margin: 0;
+  border-radius: 999px !important;
+  white-space: nowrap;
+}
+
+.scn-toast {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  bottom: calc(7rem + var(--scn-safe-b));
+  transform: translateX(-50%);
+  padding: 0.55rem 1.1rem;
+  border-radius: 999px;
+  background: var(--scn-paper);
+  color: #000;
+  font-size: 0.875rem;
+  font-weight: 500;
+  box-shadow: 0 0.75rem 2rem rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+
+/* --------------------------------------------------------------------------
+   Tablet & desktop
+   -------------------------------------------------------------------------- */
+@media (min-width: 768px) {
+  .scn-bar {
+    min-height: 4rem;
+    padding-left: max(1.75rem, var(--scn-safe-l));
+    padding-right: max(1.75rem, var(--scn-safe-r));
+  }
+
+  .scn-title {
+    font-size: 1.125rem;
+  }
+
+  .scn-camera .scn-stage {
+    margin: 0 1.5rem;
+    border-radius: 1.75rem;
+  }
+
+  .scn-controls {
+    width: min(100%, 34rem);
+    margin: 0 auto;
+    padding-top: 1.5rem;
+    padding-bottom: calc(1.75rem + var(--scn-safe-b));
+  }
+
+  .scn-view {
+    padding: 1rem 2rem 1.5rem;
+  }
+
+  .scn-panel {
+    width: min(100%, 30rem);
+    margin: 0 auto;
+  }
+}
+
+@media (min-width: 992px) {
+  .scn-split {
+    flex-direction: row;
+    width: min(100%, 72rem);
+    margin: 0 auto;
+  }
+
+  .scn-view {
+    padding: 1.5rem 1rem 2.5rem 2.5rem;
+  }
+
+  .scn-panel {
+    width: 22rem;
+    margin: 0;
+    justify-content: center;
+    padding: 1.5rem max(2.5rem, var(--scn-safe-r)) 2.5rem 1.5rem;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Ponsel miring (layar pendek): kontrol pindah ke sisi kanan
+   -------------------------------------------------------------------------- */
+@media (orientation: landscape) and (max-height: 540px) {
+  .scn-bar {
+    min-height: 2.75rem;
+    padding-top: calc(0.25rem + var(--scn-safe-t));
+    padding-bottom: 0.25rem;
+  }
+
+  .scn-title {
+    font-size: 1rem;
+  }
+
+  .scn-camera {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .scn-camera > .scn-bar {
+    grid-column: 1 / -1;
+  }
+
+  .scn-camera .scn-stage {
+    grid-column: 1;
+    grid-row: 2;
+    margin: 0 0 0.75rem max(0.75rem, var(--scn-safe-l));
+    border-radius: 1rem;
+  }
+
+  .scn-camera .scn-controls {
+    grid-column: 2;
+    grid-row: 2;
+    grid-template-columns: auto;
+    grid-template-rows: 1fr auto 1fr;
+    justify-items: center;
+    gap: 0.75rem;
+    width: auto;
+    margin: 0;
+    padding: 0 max(1rem, var(--scn-safe-r)) calc(0.75rem + var(--scn-safe-b)) 1rem;
+  }
+
+  .scn-camera .scn-side,
+  .scn-camera .scn-side--end {
+    justify-content: center;
+  }
+
+  .scn-split {
+    flex-direction: row;
+  }
+
+  .scn-view {
+    padding: 0.25rem 0.75rem 0.75rem max(0.75rem, var(--scn-safe-l));
+  }
+
+  .scn-panel {
+    width: 17.5rem;
+    margin: 0;
+    justify-content: center;
+    padding: 0.25rem max(1rem, var(--scn-safe-r)) calc(0.75rem + var(--scn-safe-b)) 0.5rem;
+  }
+
+  .scn-host .scn-segment > .btn {
+    --bs-btn-font-size: 0.8125rem;
+  }
+
+  .scn-toast {
+    bottom: calc(1.25rem + var(--scn-safe-b));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scn-shutter,
+  .scn-sheet {
+    transition: none;
+  }
+}
+</style>
+
+<main class="scn-host" data-bs-theme="dark">
+  <!-- ==========================================================
+       LAYAR 1 · KAMERA
+       Cahaya scan digambar JS di atas video: kanvas .scn-layer
+       disisipkan ke #scnStage, bukan ditulis di markup ini.
+       ========================================================== -->
+  <section class="scn-screen scn-camera" *ngIf="screen === 'camera'">
+    <header class="scn-bar">
+      <h1 class="scn-title">{{ copy.cameraTitle }}</h1>
+      <div class="d-flex align-items-center gap-2">
+        <button type="button" class="btn scn-glass scn-round" *ngIf="torchAvailable" [ngClass]="{ 'is-on': torchOn }" [attr.aria-pressed]="torchOn" [attr.aria-label]="labels.torch" (click)="toggleTorch()">
+          <svg class="scn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4.5 13.5H11L10 22l8.5-11.5H12z" /></svg>
+        </button>
+        <button type="button" class="btn scn-glass scn-round" *ngIf="hasManyCameras" [disabled]="isBusy" [attr.aria-label]="labels.switchCamera" (click)="switchCamera()">
+          <svg class="scn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5A8 8 0 0 1 18.5 6" /><path d="M19 2.5V6.5H15" /><path d="M20 14.5A8 8 0 0 1 5.5 18" /><path d="M5 21.5V17.5H9" /></svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="scn-stage" id="scnStage">
+      <video id="scnVideo" class="scn-video" autoplay playsinline muted></video>
+
+      <p class="scn-hint" role="status" aria-live="polite" *ngIf="cameraState !== 'error'">{{ hint }}</p>
+
+      <div class="scn-state" *ngIf="cameraState === 'error'">
+        <p>{{ cameraMessage }}</p>
+        <div class="d-flex flex-wrap justify-content-center gap-2">
+          <button type="button" class="btn scn-solid" (click)="retryCamera()">{{ labels.tryAgain }}</button>
+          <label class="btn scn-glass scn-lg mb-0">
+            <input type="file" accept="image/*" class="d-none" (change)="onUpload($event)" />
+            {{ labels.upload }}
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <footer class="scn-controls">
+      <div class="scn-side">
+        <!-- Hanya muncul dengan query ?IsUpload, sama seperti halaman Gemini. -->
+        <label class="btn scn-glass mb-0" *ngIf="isEnableUpload && cameraState !== 'error'">
+          <input type="file" accept="image/*" class="d-none" (change)="onUpload($event)" />
+          <svg class="scn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V4" /><path d="m7 9 5-5 5 5" /><path d="M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3" /></svg>
+          <span>{{ labels.upload }}</span>
+        </label>
+      </div>
+
+      <button type="button" class="scn-shutter" [disabled]="cameraState !== 'ready' || isBusy" [attr.aria-label]="labels.shutter" (click)="capture()"><span></span></button>
+
+      <div class="scn-side scn-side--end">
+        <button type="button" class="btn scn-glass" *ngIf="cameraState !== 'error'" [ngClass]="{ 'is-on': autoCapture }" [attr.aria-pressed]="autoCapture" (click)="toggleAuto()">
+          <span class="scn-dot"></span>{{ labels.auto }}
+        </button>
+      </div>
+    </footer>
+  </section>
+
+  <!-- ==========================================================
+       LAYAR 2 · HASIL
+       Gambarnya membatasi diri sendiri (max-width / max-height),
+       jadi kertas rasio apa pun tampil pas tanpa pita kosong.
+       ========================================================== -->
+  <section class="scn-screen scn-result" *ngIf="screen === 'result'">
+    <header class="scn-bar">
+      <h1 class="scn-title">{{ copy.resultTitle }}</h1>
+    </header>
+
+    <div class="scn-split">
+      <div class="scn-view">
+        <img id="scnResultImg" class="scn-sheet" *ngIf="resultUrl" [ngClass]="{ 'invisible': revealing, 'is-busy': isBusy && !revealing }" [src]="resultUrl" alt="Hasil scan" />
+      </div>
+
+      <div class="scn-panel">
+        <div class="btn-group scn-segment" role="group" [attr.aria-label]="labels.filterGroup">
+          <button type="button" class="btn" *ngFor="let item of filters" [ngClass]="{ 'active': filter === item.key }" [attr.aria-pressed]="filter === item.key" (click)="setFilter(item.key)">{{ item.label }}</button>
+        </div>
+
+        <div class="d-flex gap-2">
+          <button type="button" class="btn scn-glass flex-fill" [disabled]="isBusy" (click)="rotate()">
+            <svg class="scn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.6-5.9" /><path d="M20 4v5h-5" /></svg>
+            {{ labels.rotate }}
+          </button>
+          <button type="button" class="btn scn-glass flex-fill" *ngIf="canAdjust" [disabled]="isBusy" (click)="openAdjust()">
+            <svg class="scn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V5a1 1 0 0 1 1-1h4" /><path d="M15 4h4a1 1 0 0 1 1 1v4" /><path d="M20 15v4a1 1 0 0 1-1 1h-4" /><path d="M9 20H5a1 1 0 0 1-1-1v-4" /></svg>
+            {{ labels.adjust }}
+          </button>
+        </div>
+
+        <div class="d-flex gap-2">
+          <button type="button" class="btn scn-glass scn-lg flex-fill" (click)="rescan()">{{ labels.rescan }}</button>
+          <button type="button" class="btn scn-solid flex-fill" [disabled]="isBusy || !resultUrl" (click)="save()">{{ labels.save }}</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================================
+       LAYAR 3 · ATUR SUDUT
+       Editor sudut (titik geser + kaca pembesar) dibuat scanic ke
+       dalam #scnEditor sesudah layar ini tampil.
+       ========================================================== -->
+  <section class="scn-screen scn-adjust" *ngIf="screen === 'adjust'">
+    <header class="scn-bar flex-column align-items-start justify-content-center gap-1">
+      <h1 class="scn-title">{{ copy.adjustTitle }}</h1>
+      <p class="scn-sub">{{ copy.adjustHint }}</p>
+    </header>
+
+    <div class="scn-split">
+      <div class="scn-view">
+        <div class="scn-editor" id="scnEditor"></div>
+      </div>
+
+      <div class="scn-panel">
+        <div class="d-flex gap-2">
+          <button type="button" class="btn scn-glass scn-lg flex-fill" (click)="cancelAdjust()">{{ labels.cancel }}</button>
+          <button type="button" class="btn scn-solid flex-fill" (click)="applyAdjust()">{{ labels.apply }}</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="scn-toast" role="status" *ngIf="toast">{{ toast }}</div>
+</main>
+
+<script>
+/* =========================================================================
+   INTERFACE SCANNER — skrip halaman
+
+   Alur layar:  camera -> result   (result -> adjust -> result)
+
+   Deteksi kertas memakai scanic (MIT), dimuat saat halaman dibuka lewat
+   import() dari jsDelivr, jadi tidak perlu build atau berkas tambahan.
+   Detektor utamanya ML (DocCornerNet, sekitar 2 MB, dimuat sekali). Kalau
+   gagal dimuat, otomatis turun ke detektor klasik; kalau scanic sendiri
+   gagal dimuat, halaman tetap jalan sebagai kamera biasa.
+
+   Perspektif diluruskan oleh kode di berkas ini sendiri (homografi +
+   bilinear), termasuk tebakan rasio asli kertas dari sudut pandang kamera
+   (Zhang & He, 2007), sehingga hasilnya tidak gepeng walau difoto miring.
+
+   Aturan platform yang diikuti (sama dengan template Gemini):
+   - persis satu blok gaya, satu main, satu blok skrip;
+   - nama kedua tag itu tidak pernah ditulis utuh di komentar;
+   - semua this.* dipasang sinkron sebelum await pertama;
+   - state yang diubah dari callback async dibungkus this.zone.run;
+   - tidak ada animasi CSS @keyframes / [ngStyle]. Cahaya scan digambar di
+     kanvas lewat requestAnimationFrame, transisi besar memakai Web
+     Animations API (element.animate) pada elemen buatan JS.
+   ========================================================================= */
+this.pageMain = async () => {
+  //#region KONFIGURASI  <<< YANG BIASANYA DIUBAH ADA DI SINI
+  /* Naikkan tiap kali berkas ini diubah. Cek versi yang sedang live dari
+     console halaman: window.__SCAN_BUILD */
+  const BUILD = "scan-261001-1";
+
+  /* Library deteksi. Versinya dikunci supaya perilakunya tidak berubah
+     diam-diam. Mau host sendiri: salin folder dist/ scanic ke S3 (CORS *),
+     lalu ganti URL ini. */
+  const SCANIC_URL = "https://cdn.jsdelivr.net/npm/scanic@1.6.0/dist/scanic.js";
+
+  /* Opsi detektor ML. Tambahkan assetBaseUrl kalau model + runtime-nya
+     (paket scanic-ml) di-host sendiri, supaya tidak bergantung ke jsDelivr. */
+  const ML_OPTIONS = { minScore: 0.5 };
+
+  /* Rasio kertas, lebar / tinggi.
+       "auto"   -> ditebak dari foto (kertas ukuran apa saja)
+       210/297  -> A4      148/210 -> A5      4/6 -> kartu 4R
+     Kalau diisi angka, orientasinya (tegak / rebah) tetap mengikuti kertas
+     di foto. Isi angka kalau kertasnya dicetak sendiri — hasilnya paling
+     presisi. */
+  const DOC_RATIO = "auto";
+
+  /* Jepret otomatis: kertas harus diam selama HOLD_MS. */
+  const AUTO_CAPTURE_DEFAULT = true;
+  const HOLD_MS = 1400;
+
+  /* Resolusi kamera yang diminta. Browser memilih yang terdekat yang
+     didukung perangkat; makin besar makin tajam tulisan di hasil scan. */
+  const CAMERA_IDEAL = { width: 3840, height: 2160 };
+
+  /* Hasil */
+  const OUTPUT_MAX = 2400; // sisi terpanjang gambar hasil (px)
+  const JPEG_QUALITY = 0.92;
+  const DEFAULT_FILTER = "clean"; // original | clean | bw
+
+  /* Dipanggil setiap kali hasil scan siap atau berubah (ganti filter, putar,
+     atur sudut). Isi kalau hasilnya mau dikirim ke server, Gemini, atau
+     dicetak, misalnya:
+       const ON_SCAN_READY = (canvas, dataUrl) => { ... };          */
+  const ON_SCAN_READY = null;
+
+  this.copy = {
+    cameraTitle: "Scan dokumen",
+    resultTitle: "Hasil scan",
+    adjustTitle: "Atur sudut",
+    adjustHint: "Geser titik di tiap sudut sampai pas dengan tepi kertas.",
+    hintLoading: "Menyiapkan kamera…",
+    hintSearch: "Arahkan kamera ke kertas",
+    hintCloser: "Dekatkan kamera ke kertas",
+    hintHold: "Tahan posisi sebentar",
+    hintTap: "Tekan tombol untuk memotret",
+    hintWorking: "Merapikan hasil scan…",
+    saved: "Tersimpan",
+    errInsecure: "Kamera hanya bisa dibuka lewat https.",
+    errDenied: "Akses kamera diblokir. Izinkan kamera di browser, lalu coba lagi.",
+    errNotFound: "Tidak ada kamera yang bisa dipakai di perangkat ini.",
+    errBusy: "Kamera sedang dipakai aplikasi lain. Tutup dulu, lalu coba lagi.",
+    errGeneric: "Kamera tidak bisa dinyalakan. Coba lagi.",
+  };
+
+  this.labels = {
+    shutter: "Ambil foto",
+    auto: "Otomatis",
+    upload: "Unggah foto",
+    torch: "Lampu kilat",
+    switchCamera: "Ganti kamera",
+    tryAgain: "Coba lagi",
+    filterGroup: "Tampilan hasil",
+    rotate: "Putar",
+    adjust: "Atur sudut",
+    rescan: "Scan lagi",
+    save: "Simpan",
+    cancel: "Batal",
+    apply: "Terapkan",
+  };
+
+  this.filters = [
+    { key: "original", label: "Asli" },
+    { key: "clean", label: "Bersih" },
+    { key: "bw", label: "Hitam putih" },
+  ];
+  //#endregion
+
+  //#region Penyetelan deteksi (jarang perlu diubah)
+  const DETECT_SIZE = 384; // sisi terpanjang frame untuk deteksi live (px)
+  const PRECISE_SIZE = 1024; // ukuran foto untuk deteksi ulang saat jepret
+  const DETECT_GAP_MS = 80; // jeda minimum antar deteksi live
+  const STEADY_TOLERANCE = 0.016; // geseran sudut maks (proporsi diagonal frame) yang masih dianggap diam
+  const MIN_AREA = 0.06; // kertas minimal 6% frame supaya dianggap ketemu
+  const AUTO_MIN_AREA = 0.14; // ... dan 14% frame sebelum boleh dijepret otomatis
+  const HITS_TO_LOCK = 2; // deteksi berturut-turut sebelum cahaya muncul
+  const MISSES_TO_LOSE = 4; // deteksi gagal berturut-turut sebelum cahaya hilang
+  const STILL_MAX = 4096; // foto unggahan dikecilkan ke ukuran ini
+  const EDGE_TRIM_PX = 3; // tepi hasil dipangkas sekian piksel (foto asli) supaya tidak ada garis latar
+  //#endregion
+
+  //#region State
+  const query = this.activatedRoute?.snapshot?.queryParams ?? {};
+
+  this.screen = "camera"; // camera | result | adjust
+  this.cameraState = "loading"; // loading | ready | error
+  this.cameraMessage = "";
+  this.hint = this.copy.hintLoading;
+  this.autoCapture = AUTO_CAPTURE_DEFAULT;
+  this.isBusy = false;
+  this.revealing = false;
+  this.canAdjust = false;
+  this.hasManyCameras = false;
+  this.torchAvailable = false;
+  this.torchOn = false;
+  this.filter = DEFAULT_FILTER;
+  this.resultUrl = "";
+  this.toast = "";
+  this.isEnableUpload = ["IsUpload", "isUpload", "isEnableUpload"].some((key) => key in query);
+
+  /* Semua yang bukan untuk template (stream, kanvas, library) disimpan di
+     sini, BUKAN di this, supaya tidak ikut dipantau change detection dan
+     tidak dibungkus proxy oleh harness preview. */
+  const E = {
+    mod: null,
+    scanner: null,
+    ml: false,
+    engine: null,
+    engineFailed: false,
+    host: null,
+    camToken: 0,
+    stream: null,
+    track: null,
+    video: null,
+    deviceIds: [],
+    deviceIndex: -1,
+    wasRunning: false,
+    raf: 0,
+    layer: null,
+    ctx: null,
+    dpr: 1,
+    orphan: 0,
+    lastNow: 0,
+    detecting: false,
+    lastDetect: 0,
+    detectGap: DETECT_GAP_MS,
+    frame: document.createElement("canvas"),
+    frameCtx: null,
+    hits: 0,
+    misses: 0,
+    target: null,
+    shown: null,
+    alpha: 0,
+    lockAt: 0,
+    anchor: null,
+    steadySince: 0,
+    bigEnough: false,
+    progress: 0,
+    frozen: false,
+    still: null,
+    corners: null,
+    warped: null,
+    cleanData: null,
+    cache: {},
+    rotation: 0,
+    out: null,
+    editor: null,
+  };
+
+  const ui = (fn) => (this.zone?.run ? this.zone.run(fn) : fn());
+  const REDUCED = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
+  //#endregion
+
+  //#region Utilitas
+  const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+  const easeOut = (t) => 1 - Math.pow(1 - t, 3);
+  const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+  const nextFrame = () => new Promise((resolve) => requestAnimationFrame(() => resolve()));
+  const nextFrames = async (n) => {
+    for (let i = 0; i < n; i++) await nextFrame();
+  };
+  const buzz = (pattern) => {
+    try {
+      navigator.vibrate?.(pattern);
+    } catch {}
+  };
+
+  /* Halaman platform bisa ditinggal tanpa pemberitahuan. Elemen .scn-host
+     yang sudah lepas dari DOM = halaman ini sudah tidak tampil. */
+  const alive = () => !E.host || E.host.isConnected;
+
+  const waitFor = async (selector, sized = false, timeout = 2500) => {
+    const start = performance.now();
+    for (;;) {
+      const el = document.querySelector(selector);
+      if (el) {
+        const box = el.getBoundingClientRect();
+        if (!sized || (box.width > 0 && box.height > 0)) return el;
+      }
+      if (performance.now() - start > timeout) return el;
+      await nextFrame();
+    }
+  };
+
+  const drawScaled = (src, scale) => {
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(src.width * scale));
+    canvas.height = Math.max(1, Math.round(src.height * scale));
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(src, 0, 0, canvas.width, canvas.height);
+    return canvas;
+  };
+
+  const loadImage = (url) =>
+    new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = url;
+    });
+
+  const setHint = (text) => {
+    if (this.hint !== text) ui(() => (this.hint = text));
+  };
+
+  let toastTimer = 0;
+  const showToast = (text) => {
+    clearTimeout(toastTimer);
+    ui(() => (this.toast = text));
+    toastTimer = setTimeout(() => ui(() => (this.toast = "")), 1800);
+  };
+  //#endregion
+
+  //#region Geometri
+  const ORDER = ["topLeft", "topRight", "bottomRight", "bottomLeft"];
+  const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+  const centroid = (q) => ({ x: (q[0].x + q[1].x + q[2].x + q[3].x) / 4, y: (q[0].y + q[1].y + q[2].y + q[3].y) / 4 });
+  const lerpQuad = (a, b, t) => a.map((p, i) => ({ x: p.x + (b[i].x - p.x) * t, y: p.y + (b[i].y - p.y) * t }));
+  const toCorners = (q) => ({ topLeft: q[0], topRight: q[1], bottomRight: q[2], bottomLeft: q[3] });
+  const insetQuad = (w, h) => [
+    { x: w * 0.1, y: h * 0.1 },
+    { x: w * 0.9, y: h * 0.1 },
+    { x: w * 0.9, y: h * 0.9 },
+    { x: w * 0.1, y: h * 0.9 },
+  ];
+
+  /* Urutkan searah jarum jam mulai dari sudut kiri atas: TL, TR, BR, BL. */
+  const orderQuad = (q) => {
+    const c = centroid(q);
+    const s = [...q].sort((a, b) => Math.atan2(a.y - c.y, a.x - c.x) - Math.atan2(b.y - c.y, b.x - c.x));
+    let first = 0;
+    for (let i = 1; i < 4; i++) if (s[i].x + s[i].y < s[first].x + s[first].y) first = i;
+    return [0, 1, 2, 3].map((i) => s[(first + i) % 4]);
+  };
+
+  /* Kertas yang miring ~45° bisa membuat "sudut kiri atas" berpindah dari
+     satu frame ke frame berikutnya. Urutan sudut q diputar supaya paling
+     dekat dengan ref, jadi kotak cahayanya tidak terpelintir. */
+  const alignQuad = (q, ref) => {
+    let best = q;
+    let bestCost = Infinity;
+    for (let s = 0; s < 4; s++) {
+      const cand = [0, 1, 2, 3].map((i) => q[(i + s) % 4]);
+      const cost = cand.reduce((sum, p, i) => sum + dist(p, ref[i]), 0);
+      if (cost < bestCost) {
+        bestCost = cost;
+        best = cand;
+      }
+    }
+    return best;
+  };
+
+  const quadArea = (q) => {
+    let sum = 0;
+    for (let i = 0; i < 4; i++) {
+      const a = q[i];
+      const b = q[(i + 1) % 4];
+      sum += a.x * b.y - b.x * a.y;
+    }
+    return Math.abs(sum) / 2;
+  };
+
+  /* Segi empat yang masuk akal sebagai kertas: cembung, tiap sudut dalamnya
+     antara ~35° dan ~145°, dan cukup besar. */
+  const quadOk = (q, w, h) => {
+    let sign = 0;
+    for (let i = 0; i < 4; i++) {
+      const a = q[i];
+      const b = q[(i + 1) % 4];
+      const c = q[(i + 2) % 4];
+      const z = (b.x - a.x) * (c.y - b.y) - (b.y - a.y) * (c.x - b.x);
+      if (!z || (sign && Math.sign(z) !== sign)) return false;
+      sign = Math.sign(z);
+      const v1x = a.x - b.x;
+      const v1y = a.y - b.y;
+      const v2x = c.x - b.x;
+      const v2y = c.y - b.y;
+      const cos = (v1x * v2x + v1y * v2y) / (Math.hypot(v1x, v1y) * Math.hypot(v2x, v2y));
+      if (Math.abs(cos) > 0.82) return false;
+    }
+    return quadArea(q) >= MIN_AREA * w * h;
+  };
+
+  /* Homografi persegi satuan (u, v) -> segi empat q (Heckbert):
+       x = (a u + b v + c) / (g u + h v + 1)
+       y = (d u + e v + f) / (g u + h v + 1)                              */
+  const squareToQuad = (q) => {
+    const [p0, p1, p2, p3] = q;
+    const dx1 = p1.x - p2.x;
+    const dx2 = p3.x - p2.x;
+    const dy1 = p1.y - p2.y;
+    const dy2 = p3.y - p2.y;
+    const sx = p0.x - p1.x + p2.x - p3.x;
+    const sy = p0.y - p1.y + p2.y - p3.y;
+    let g = 0;
+    let h = 0;
+    if (Math.abs(sx) > 1e-9 || Math.abs(sy) > 1e-9) {
+      const den = dx1 * dy2 - dx2 * dy1;
+      g = (sx * dy2 - dx2 * sy) / den;
+      h = (dx1 * sy - sx * dy1) / den;
+    }
+    return [p1.x - p0.x + g * p1.x, p3.x - p0.x + h * p3.x, p0.x, p1.y - p0.y + g * p1.y, p3.y - p0.y + h * p3.y, p0.y, g, h];
+  };
+
+  /* transform CSS yang memetakan elemen berukuran w x h (origin 0 0, posisi
+     fixed di 0,0) tepat ke segi empat q di layar. */
+  const quadMatrix = (q, w, h) => {
+    const [a, b, c, d, e, f, g, hh] = squareToQuad(q);
+    const m = [a / w, d / w, 0, g / w, b / h, e / h, 0, hh / h, 0, 0, 1, 0, c, f, 0, 1];
+    return `matrix3d(${m.map((n) => n.toFixed(12)).join(",")})`;
+  };
+
+  /* Rasio asli kertas (lebar / tinggi) dari empat sudutnya di foto.
+     Zhang & He 2007: panjang fokus kamera ditebak dari segi empat itu
+     sendiri (titik pusat lensa dianggap di tengah foto). Kalau fotonya
+     hampir tegak lurus (perspektifnya tipis), rumusnya tidak stabil, jadi
+     dipakai rata-rata panjang sisi. Diuji: meleset median 0,27% vs 2,8%
+     kalau hanya memakai panjang sisi. */
+  const estimateRatio = (q, iw, ih) => {
+    const [tl, tr, br, bl] = q;
+    const fallback = (dist(tl, tr) + dist(bl, br)) / (dist(tl, bl) + dist(tr, br));
+    const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+    const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+    const u0 = iw / 2;
+    const v0 = ih / 2;
+    const m1 = [tl.x, tl.y, 1];
+    const m2 = [tr.x, tr.y, 1];
+    const m3 = [bl.x, bl.y, 1];
+    const m4 = [br.x, br.y, 1];
+    const k2 = dot(cross(m1, m4), m3) / dot(cross(m2, m4), m3);
+    const k3 = dot(cross(m1, m4), m2) / dot(cross(m3, m4), m2);
+    const n2 = m2.map((c, i) => k2 * c - m1[i]);
+    const n3 = m3.map((c, i) => k3 * c - m1[i]);
+    const f2 = -((n2[0] - u0 * n2[2]) * (n3[0] - u0 * n3[2]) + (n2[1] - v0 * n2[2]) * (n3[1] - v0 * n3[2])) / (n2[2] * n3[2]);
+    const diag = Math.hypot(iw, ih);
+    if (!(f2 > 0) || !Number.isFinite(f2)) return fallback;
+    const f = Math.sqrt(f2);
+    if (f < 0.25 * diag || f > 6 * diag) return fallback;
+    const len = (n) => Math.hypot((n[0] - u0 * n[2]) / f, (n[1] - v0 * n[2]) / f, n[2]);
+    const r = len(n2) / len(n3);
+    if (!Number.isFinite(r) || r <= 0 || r / fallback > 1.6 || fallback / r > 1.6) return fallback;
+    return r;
+  };
+
+  const pathQuad = (ctx, q) => {
+    ctx.moveTo(q[0].x, q[0].y);
+    ctx.lineTo(q[1].x, q[1].y);
+    ctx.lineTo(q[2].x, q[2].y);
+    ctx.lineTo(q[3].x, q[3].y);
+    ctx.closePath();
+  };
+  //#endregion
+
+  //#region Mesin deteksi (scanic) — di Web Worker kalau bisa
+  /* Deteksi berjalan di Web Worker supaya animasi cahaya tetap mulus: satu
+     deteksi ML makan 30-100 ms, dan kalau dikerjakan di thread utama
+     animasinya ikut tersendat. Worker-nya dibuat dari teks di bawah ini
+     (Blob URL), jadi halaman tetap satu berkas. Browser yang tidak bisa
+     (tanpa module worker / OffscreenCanvas) otomatis memakai thread utama.
+
+     Library di thread utama tetap dimuat, karena editor "Atur sudut"
+     berasal dari sana. */
+  const WORKER_SOURCE = `
+const SCANIC_URL = ${JSON.stringify(SCANIC_URL)};
+const ML_OPTIONS = ${JSON.stringify(ML_OPTIONS)};
+let scanner = null;
+let ml = false;
+const ready = (async () => {
+  const mod = await import(SCANIC_URL);
+  scanner = new mod.Scanner();
+  await scanner.initialize();
+  try {
+    await scanner.scan(new OffscreenCanvas(64, 64), { mode: "detect", detector: "ml", ml: ML_OPTIONS });
+    ml = true;
+  } catch (err) {}
+  postMessage({ type: "ready", ml });
+})();
+ready.catch((err) => postMessage({ type: "failed", message: String((err && err.message) || err) }));
+onmessage = async (event) => {
+  const { id, image } = event.data;
+  let corners = null;
+  try {
+    await ready;
+    const r = await scanner.scan(image, ml ? { mode: "detect", detector: "ml", ml: ML_OPTIONS } : { mode: "detect" });
+    if (r && r.success && r.corners) corners = r.corners;
+  } catch (err) {}
+  if (image && image.close) image.close();
+  postMessage({ type: "result", id, corners });
+};
+`;
+
+  const DW = { worker: null, url: "", ready: false, dead: false, seq: 0, waiting: new Map() };
+
+  const startWorker = () => {
+    if (DW.worker || DW.dead) return;
+    if (typeof Worker !== "function" || typeof OffscreenCanvas !== "function" || typeof createImageBitmap !== "function") {
+      DW.dead = true;
+      return;
+    }
+    try {
+      DW.url = URL.createObjectURL(new Blob([WORKER_SOURCE], { type: "text/javascript" }));
+      DW.worker = new Worker(DW.url, { type: "module" });
+    } catch (err) {
+      console.warn("[scan] worker tidak bisa dibuat, deteksi di thread utama", err);
+      workerDown();
+      return;
+    }
+    DW.worker.onmessage = (event) => {
+      const m = event.data || {};
+      if (m.type === "result") {
+        const done = DW.waiting.get(m.id);
+        DW.waiting.delete(m.id);
+        done?.(m.corners);
+      } else if (m.type === "ready") {
+        DW.ready = true;
+        E.ml = m.ml;
+        URL.revokeObjectURL(DW.url);
+        console.info(`[scan] mesin deteksi siap di worker (${m.ml ? "ML" : "klasik"})`);
+      } else if (m.type === "failed") {
+        console.warn("[scan] worker gagal memuat scanic", m.message);
+        workerDown();
+      }
+    };
+    DW.worker.onerror = (event) => {
+      console.warn("[scan] worker error", event?.message || event);
+      workerDown();
+    };
+  };
+
+  /* Worker tidak bisa dipakai: deteksi pindah ke thread utama. */
+  const workerDown = () => {
+    DW.dead = true;
+    DW.ready = false;
+    DW.worker?.terminate();
+    DW.worker = null;
+    if (DW.url) URL.revokeObjectURL(DW.url);
+    for (const done of DW.waiting.values()) done(null);
+    DW.waiting.clear();
+    loadEngine().then(initMainDetector);
+  };
+
+  const askWorker = (image) =>
+    new Promise((resolve) => {
+      const id = ++DW.seq;
+      DW.waiting.set(id, resolve);
+      DW.worker.postMessage({ id, image }, [image]);
+      setTimeout(() => {
+        if (!DW.waiting.has(id)) return;
+        DW.waiting.delete(id);
+        resolve(null);
+      }, 5000);
+    });
+
+  const loadEngine = () => {
+    if (E.engine) return E.engine;
+    E.engine = (async () => {
+      try {
+        E.mod = await import(SCANIC_URL);
+        ui(() => (this.canAdjust = true));
+      } catch (err) {
+        console.warn("[scan] scanic gagal dimuat di thread utama", err);
+      }
+    })();
+    return E.engine;
+  };
+
+  /* Cadangan kalau worker tidak tersedia: detektor di thread utama. */
+  const initMainDetector = async () => {
+    if (E.scanner) return;
+    if (!E.mod) {
+      E.engineFailed = true;
+      refreshHint();
+      return;
+    }
+    try {
+      const scanner = new E.mod.Scanner();
+      await scanner.initialize();
+      E.scanner = scanner;
+    } catch (err) {
+      console.warn("[scan] detektor tidak bisa dijalankan, kamera jalan tanpa deteksi", err);
+      E.engineFailed = true;
+      refreshHint();
+      return;
+    }
+    try {
+      const probe = document.createElement("canvas");
+      probe.width = probe.height = 64;
+      await E.scanner.scan(probe, { mode: "detect", detector: "ml", ml: ML_OPTIONS });
+      E.ml = true;
+    } catch (err) {
+      console.warn("[scan] detektor ML gagal dimuat, pakai detektor klasik", err);
+    }
+    console.info(`[scan] mesin deteksi siap di thread utama (${E.ml ? "ML" : "klasik"})`);
+  };
+
+  const canDetect = () => DW.ready || Boolean(E.scanner);
+
+  /* Tunggu mesin deteksi siap (model ML ~2 MB baru diunduh saat halaman
+     pertama dibuka). setTimeout, bukan requestAnimationFrame, supaya tetap
+     jalan walau tab sedang tidak tampil. */
+  const detectorReady = async (timeout) => {
+    const start = performance.now();
+    while (!canDetect() && !E.engineFailed && performance.now() - start < timeout) await new Promise((r) => setTimeout(r, 100));
+    return canDetect();
+  };
+
+  /* Sudut kertas di `source` (video atau kanvas) yang dikecilkan ke w x h.
+     Hasilnya dalam koordinat w x h, urut TL, TR, BR, BL — atau null. */
+  const detectAt = async (source, w, h) => {
+    let raw = null;
+    if (DW.ready) {
+      let bitmap = null;
+      try {
+        bitmap = await createImageBitmap(source, { resizeWidth: w, resizeHeight: h, resizeQuality: "medium" });
+      } catch {
+        /* Sebagian browser belum bisa membuat bitmap langsung dari <video>:
+           lewat kanvas dulu. */
+        try {
+          if (E.frame.width !== w || E.frame.height !== h) {
+            E.frame.width = w;
+            E.frame.height = h;
+          }
+          if (!E.frameCtx) E.frameCtx = E.frame.getContext("2d", { willReadFrequently: true });
+          E.frameCtx.drawImage(source, 0, 0, w, h);
+          bitmap = await createImageBitmap(E.frame);
+        } catch {}
+      }
+      if (bitmap) {
+        const bw = bitmap.width;
+        const bh = bitmap.height;
+        const c = await askWorker(bitmap);
+        if (c) raw = ORDER.map((key) => ({ x: (c[key].x * w) / bw, y: (c[key].y * h) / bh }));
+      }
+    } else if (E.scanner) {
+      if (E.frame.width !== w || E.frame.height !== h) {
+        E.frame.width = w;
+        E.frame.height = h;
+      }
+      if (!E.frameCtx) E.frameCtx = E.frame.getContext("2d", { willReadFrequently: true });
+      E.frameCtx.drawImage(source, 0, 0, w, h);
+      try {
+        const r = await E.scanner.scan(E.frame, E.ml ? { mode: "detect", detector: "ml", ml: ML_OPTIONS } : { mode: "detect" });
+        if (r?.success && r.corners) raw = ORDER.map((key) => ({ x: r.corners[key].x, y: r.corners[key].y }));
+      } catch (err) {
+        console.warn("[scan] deteksi gagal", err);
+      }
+    }
+    if (!raw) return null;
+    const q = orderQuad(raw);
+    return quadOk(q, w, h) ? q : null;
+  };
+
+  /* Deteksi ulang di foto yang sudah dijepret (lebih tajam daripada frame
+     live yang kecil), lalu sudutnya ditajamkan di resolusi tinggi. */
+  const preciseCorners = async (still) => {
+    const scale = Math.min(1, PRECISE_SIZE / Math.max(still.width, still.height));
+    const w = Math.round(still.width * scale);
+    const h = Math.round(still.height * scale);
+    const q = await detectAt(still, w, h);
+    if (!q) return null;
+    return refineCorners(
+      still,
+      q.map((p) => ({ x: (p.x * still.width) / w, y: (p.y * still.height) / h })),
+    );
+  };
+  //#endregion
+
+  //#region Penajaman sudut
+  /* Detektor ML membaca foto berukuran 224 px, jadi sudutnya bisa meleset
+     beberapa piksel di foto aslinya — cukup untuk menyisakan garis tipis
+     latar di tepi hasil. Di sini, di sekitar tiap sisi, dicari tepi kertas
+     yang sebenarnya (perubahan terang-gelap paling kuat di dekat tebakan),
+     ditarik garis lurus lewat titik-titik itu, lalu garis-garisnya
+     dipotongkan jadi sudut baru.
+     Diuji pada 24 foto berlabel: kartu di atas meja jadi presisi ~0,05%
+     dari diagonal (sebelumnya 0,4-1,9%). Sisi yang tepinya tidak jelas
+     atau tidak lurus dibiarkan memakai tebakan awal. */
+  const fitLine = (pts) => {
+    const fit = (list) => {
+      let mx = 0;
+      let my = 0;
+      for (const p of list) {
+        mx += p.x;
+        my += p.y;
+      }
+      mx /= list.length;
+      my /= list.length;
+      let sxx = 0;
+      let sxy = 0;
+      let syy = 0;
+      for (const p of list) {
+        const dx = p.x - mx;
+        const dy = p.y - my;
+        sxx += dx * dx;
+        sxy += dx * dy;
+        syy += dy * dy;
+      }
+      const th = 0.5 * Math.atan2(2 * sxy, sxx - syy);
+      return { x: mx, y: my, dx: Math.cos(th), dy: Math.sin(th) };
+    };
+    const off = (p, l) => Math.abs((p.x - l.x) * -l.dy + (p.y - l.y) * l.dx);
+    let line = fit(pts);
+    let keep = pts;
+    for (let pass = 0; pass < 2; pass++) {
+      const r = pts.map((p) => off(p, line)).sort((a, b) => a - b);
+      const limit = Math.max(1, 2.5 * r[Math.floor(r.length / 2)]);
+      const next = pts.filter((p) => off(p, line) <= limit);
+      if (next.length < 6) break;
+      keep = next;
+      line = fit(keep);
+    }
+    line.inliers = keep.length / pts.length;
+    return line;
+  };
+
+  const meet = (a, b) => {
+    const den = a.dx * b.dy - a.dy * b.dx;
+    if (Math.abs(den) < 1e-6) return null;
+    const t = ((b.x - a.x) * b.dy - (b.y - a.y) * b.dx) / den;
+    return { x: a.x + a.dx * t, y: a.y + a.dy * t };
+  };
+
+  const refineQuad = (g, W, H, q) => {
+    const c = centroid(q);
+    const R = Math.max(5, Math.hypot(W, H) * 0.012); // jangkauan cari: 1,2% diagonal
+    const STEP = 0.5;
+    const N = Math.round((2 * R) / STEP);
+    const K = 40; // titik sampel per sisi
+    const prof = new Float32Array(N + 1);
+    const at = (x, y) => {
+      if (x < 0 || y < 0 || x > W - 1.001 || y > H - 1.001) return -1;
+      const x0 = x | 0;
+      const y0 = y | 0;
+      const fx = x - x0;
+      const fy = y - y0;
+      const i = y0 * W + x0;
+      return g[i] * (1 - fx) * (1 - fy) + g[i + 1] * fx * (1 - fy) + g[i + W] * (1 - fx) * fy + g[i + W + 1] * fx * fy;
+    };
+
+    const lines = [];
+    for (let s = 0; s < 4; s++) {
+      const p = q[s];
+      const r = q[(s + 1) % 4];
+      const len = dist(p, r);
+      if (len < 20) {
+        lines.push(null);
+        continue;
+      }
+      const tx = (r.x - p.x) / len;
+      const ty = (r.y - p.y) / len;
+      let nx = -ty;
+      let ny = tx;
+      if (((p.x + r.x) / 2 - c.x) * nx + ((p.y + r.y) / 2 - c.y) * ny < 0) {
+        nx = -nx; // normal selalu mengarah ke luar kertas
+        ny = -ny;
+      }
+      const samples = [];
+      for (let k = 0; k < K; k++) {
+        const f = 0.08 + 0.84 * (k / (K - 1));
+        const bx = p.x + (r.x - p.x) * f;
+        const by = p.y + (r.y - p.y) * f;
+        let inside = true;
+        for (let j = 0; j <= N && inside; j++) {
+          const v = at(bx + nx * (-R + j * STEP), by + ny * (-R + j * STEP));
+          if (v < 0) inside = false;
+          else prof[j] = v;
+        }
+        if (!inside) continue;
+        const neg = { score: 0, j: -1 };
+        const pos = { score: 0, j: -1 };
+        for (let j = 2; j <= N - 2; j++) {
+          const grad = (prof[j + 2] - prof[j - 2]) / 2;
+          const o = (-R + j * STEP) / (R * 0.6);
+          const score = Math.abs(grad) * Math.exp(-o * o); // tepi yang dekat tebakan lebih dipercaya
+          if (grad < 0 && score > neg.score) Object.assign(neg, { score, j });
+          if (grad > 0 && score > pos.score) Object.assign(pos, { score, j });
+        }
+        samples.push({ bx, by, neg, pos });
+      }
+      /* Arah tepi (kertas lebih terang atau lebih gelap dari latar) diambil
+         dari suara terbanyak di sisi ini. */
+      let sumNeg = 0;
+      let sumPos = 0;
+      for (const sm of samples) {
+        sumNeg += sm.neg.score;
+        sumPos += sm.pos.score;
+      }
+      const pts = [];
+      for (const sm of samples) {
+        const best = sumNeg >= sumPos ? sm.neg : sm.pos;
+        if (best.j < 0 || best.score < 3) continue;
+        const o = -R + best.j * STEP;
+        pts.push({ x: sm.bx + nx * o, y: sm.by + ny * o });
+      }
+      if (pts.length < K * 0.35) {
+        lines.push(null);
+        continue;
+      }
+      const line = fitLine(pts);
+      const angle = Math.abs(Math.asin(clamp(line.dx * ty - line.dy * tx, -1, 1)));
+      lines.push(line.inliers >= 0.4 && angle <= 0.105 ? line : null); // maks ~6°
+    }
+
+    const out = q.map((p, i) => {
+      const a = lines[(i + 3) % 4];
+      const b = lines[i];
+      const x = a && b ? meet(a, b) : null;
+      return x && dist(x, p) <= R * 2.5 ? x : p;
+    });
+    return quadOk(out, W, H) ? out : q;
+  };
+
+  const refineCorners = (still, q) => {
+    try {
+      const scale = Math.min(1, 1600 / Math.max(still.width, still.height));
+      const small = drawScaled(still, scale);
+      const W = small.width;
+      const H = small.height;
+      const d = small.getContext("2d", { willReadFrequently: true }).getImageData(0, 0, W, H).data;
+      const g = new Float32Array(W * H);
+      for (let i = 0, j = 0; j < g.length; i += 4, j++) g[j] = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114;
+      const out = refineQuad(
+        g,
+        W,
+        H,
+        q.map((p) => ({ x: p.x * scale, y: p.y * scale })),
+      );
+      return out.map((p) => ({ x: p.x / scale, y: p.y / scale }));
+    } catch (err) {
+      console.warn("[scan] penajaman sudut dilewati", err);
+      return q;
+    }
+  };
+  //#endregion
+
+  //#region Kamera
+  const stopCamera = () => {
+    E.camToken++;
+    cancelAnimationFrame(E.raf);
+    E.raf = 0;
+    E.stream?.getTracks().forEach((track) => track.stop());
+    E.stream = null;
+    E.track = null;
+    if (E.video) {
+      try {
+        E.video.srcObject = null;
+      } catch {}
+    }
+    E.video = null;
+    E.layer?.remove();
+    E.layer = null;
+    E.ctx = null;
+  };
+
+  const cameraError = (err) => {
+    console.error("[scan] kamera", err);
+    let msg = this.copy.errGeneric;
+    if (!window.isSecureContext) msg = this.copy.errInsecure;
+    else if (err?.name === "NotAllowedError" || err?.name === "SecurityError") msg = this.copy.errDenied;
+    else if (err?.name === "NotFoundError" || err?.name === "OverconstrainedError") msg = this.copy.errNotFound;
+    else if (err?.name === "NotReadableError" || err?.name === "AbortError") msg = this.copy.errBusy;
+    ui(() => {
+      this.cameraState = "error";
+      this.cameraMessage = msg;
+    });
+  };
+
+  const waitForVideo = async (video, timeout = 4000) => {
+    const start = performance.now();
+    while (!video.videoWidth && performance.now() - start < timeout) await nextFrame();
+    return video.videoWidth > 0;
+  };
+
+  this.startCamera = async () => {
+    stopCamera();
+    const token = E.camToken;
+    loadEngine();
+    ui(() => {
+      this.cameraState = "loading";
+      this.cameraMessage = "";
+      this.hint = this.copy.hintLoading;
+      this.torchOn = false;
+    });
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      cameraError({ name: window.isSecureContext ? "NotFoundError" : "SecurityError" });
+      return;
+    }
+
+    const video = { width: { ideal: CAMERA_IDEAL.width }, height: { ideal: CAMERA_IDEAL.height } };
+    if (E.deviceIndex >= 0 && E.deviceIds[E.deviceIndex]) video.deviceId = { exact: E.deviceIds[E.deviceIndex] };
+    else video.facingMode = { ideal: "environment" };
+
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: false, video });
+    } catch (err) {
+      if (token === E.camToken) cameraError(err);
+      return;
+    }
+
+    const el = await waitFor("#scnVideo");
+    if (token !== E.camToken || !el || this.screen !== "camera") {
+      stream.getTracks().forEach((track) => track.stop());
+      return;
+    }
+
+    E.host = el.closest(".scn-host");
+    E.stream = stream;
+    E.track = stream.getVideoTracks()[0] ?? null;
+    E.video = el;
+    el.muted = true;
+    el.srcObject = stream;
+    try {
+      await el.play();
+    } catch {}
+    if (!(await waitForVideo(el)) || token !== E.camToken) {
+      if (token === E.camToken) cameraError({ name: "NotReadableError" });
+      return;
+    }
+
+    try {
+      const devices = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === "videoinput");
+      E.deviceIds = devices.map((d) => d.deviceId);
+      const current = E.track?.getSettings?.().deviceId;
+      if (current && E.deviceIds.includes(current)) E.deviceIndex = E.deviceIds.indexOf(current);
+    } catch {}
+    let torch = false;
+    try {
+      torch = Boolean(E.track?.getCapabilities?.().torch);
+    } catch {}
+    if (token !== E.camToken) return;
+
+    resetLive();
+    console.info(`[scan] kamera ${el.videoWidth}x${el.videoHeight}`);
+    ui(() => {
+      this.cameraState = "ready";
+      this.hasManyCameras = E.deviceIds.length > 1;
+      this.torchAvailable = torch;
+    });
+    refreshHint();
+    E.raf = requestAnimationFrame(frame);
+  };
+
+  this.retryCamera = () => this.startCamera();
+
+  this.switchCamera = () => {
+    if (E.deviceIds.length < 2 || this.isBusy) return;
+    E.deviceIndex = (Math.max(0, E.deviceIndex) + 1) % E.deviceIds.length;
+    this.startCamera();
+  };
+
+  this.toggleTorch = async () => {
+    const on = !this.torchOn;
+    try {
+      await E.track?.applyConstraints({ advanced: [{ torch: on }] });
+      ui(() => (this.torchOn = on));
+    } catch (err) {
+      console.warn("[scan] lampu kilat", err);
+    }
+  };
+
+  this.toggleAuto = () => {
+    this.autoCapture = !this.autoCapture;
+    E.anchor = null;
+    E.steadySince = 0;
+    refreshHint();
+  };
+
+  /* Pindah aplikasi / tab: kamera dilepas, lalu dinyalakan lagi saat kembali. */
+  const onVisibility = () => {
+    if (!alive()) {
+      document.removeEventListener("visibilitychange", onVisibility);
+      return;
+    }
+    if (document.hidden) {
+      if (E.stream && !this.isBusy) {
+        E.wasRunning = true;
+        stopCamera();
+      }
+    } else if (E.wasRunning) {
+      E.wasRunning = false;
+      if (this.screen === "camera") this.startCamera();
+    }
+  };
+  document.addEventListener("visibilitychange", onVisibility);
+  //#endregion
+
+  //#region Deteksi live
+  const resetLive = () => {
+    Object.assign(E, {
+      hits: 0,
+      misses: 0,
+      target: null,
+      shown: null,
+      alpha: 0,
+      anchor: null,
+      steadySince: 0,
+      bigEnough: false,
+      progress: 0,
+      frozen: false,
+      lastNow: 0,
+      orphan: 0,
+      detecting: false,
+      lastDetect: 0,
+      detectGap: DETECT_GAP_MS,
+    });
+  };
+
+  const refreshHint = () => {
+    if (this.cameraState !== "ready") return;
+    if (!E.target) setHint(E.engineFailed ? this.copy.hintTap : this.copy.hintSearch);
+    else setHint(!E.bigEnough ? this.copy.hintCloser : this.autoCapture ? this.copy.hintHold : this.copy.hintTap);
+  };
+
+  const detectLive = async () => {
+    const v = E.video;
+    if (!v || !v.videoWidth) return;
+    const vw = v.videoWidth;
+    const vh = v.videoHeight;
+    const scale = Math.min(1, DETECT_SIZE / Math.max(vw, vh));
+    const w = Math.round(vw * scale);
+    const h = Math.round(vh * scale);
+    const q = await detectAt(v, w, h);
+    if (E.frozen || v !== E.video) return;
+    onDetection(q ? q.map((p) => ({ x: (p.x * vw) / w, y: (p.y * vh) / h })) : null, vw, vh);
+  };
+
+  const onDetection = (q, vw, vh) => {
+    const now = performance.now();
+    if (!q) {
+      E.hits = 0;
+      if (++E.misses >= MISSES_TO_LOSE && E.target) {
+        E.target = null;
+        E.anchor = null;
+        E.steadySince = 0;
+      }
+      if (!E.target) setHint(this.copy.hintSearch);
+      return;
+    }
+    E.misses = 0;
+    if (!E.target && ++E.hits < HITS_TO_LOCK) return;
+    if (!E.target) {
+      E.lockAt = now;
+      E.shown = null;
+      buzz(8);
+    } else {
+      q = alignQuad(q, E.target);
+    }
+    E.target = q;
+    E.bigEnough = quadArea(q) >= AUTO_MIN_AREA * vw * vh;
+    const diag = Math.hypot(vw, vh);
+    const drift = E.anchor ? Math.max(...q.map((p, i) => dist(p, E.anchor[i]))) / diag : Infinity;
+    if (drift > STEADY_TOLERANCE || !E.bigEnough) {
+      E.anchor = q;
+      E.steadySince = now;
+    }
+    setHint(!E.bigEnough ? this.copy.hintCloser : this.autoCapture ? this.copy.hintHold : this.copy.hintTap);
+  };
+
+  const ensureLayer = (stage) => {
+    if (!E.layer || E.layer.parentNode !== stage) {
+      E.layer?.remove();
+      const canvas = document.createElement("canvas");
+      canvas.className = "scn-layer";
+      canvas.setAttribute("aria-hidden", "true");
+      Object.assign(canvas.style, { position: "absolute", inset: "0", width: "100%", height: "100%", pointerEvents: "none", zIndex: "1" });
+      stage.appendChild(canvas);
+      E.layer = canvas;
+      E.ctx = canvas.getContext("2d");
+    }
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = Math.round(stage.clientWidth * dpr);
+    const h = Math.round(stage.clientHeight * dpr);
+    if (E.layer.width !== w || E.layer.height !== h) {
+      E.layer.width = w;
+      E.layer.height = h;
+    }
+    E.dpr = dpr;
+    return E.ctx;
+  };
+
+  const frame = (now) => {
+    E.raf = requestAnimationFrame(frame);
+    const stage = document.getElementById("scnStage");
+    const v = E.video;
+    if (!stage || !v || !v.isConnected) {
+      if (++E.orphan > 45) stopCamera(); // layar berganti atau halaman ditinggal
+      return;
+    }
+    E.orphan = 0;
+    const dt = E.lastNow ? Math.min(64, now - E.lastNow) : 16;
+    E.lastNow = now;
+
+    if (!E.frozen && !E.detecting && canDetect() && v.videoWidth && now - E.lastDetect >= E.detectGap) {
+      E.detecting = true;
+      E.lastDetect = now;
+      const started = performance.now();
+      detectLive().finally(() => {
+        E.detecting = false;
+        /* Perangkat lambat: beri jeda lebih panjang. Kalau deteksinya di
+           thread utama (tanpa worker), jeda ini juga yang menjaga animasi
+           tetap mulus. */
+        E.detectGap = clamp((performance.now() - started) * (DW.ready ? 1.1 : 1.6), DETECT_GAP_MS, 400);
+      });
+    }
+
+    const ctx = ensureLayer(stage);
+    const bw = stage.clientWidth;
+    const bh = stage.clientHeight;
+    ctx.setTransform(E.dpr, 0, 0, E.dpr, 0, 0);
+    ctx.clearRect(0, 0, bw, bh);
+    if (!v.videoWidth) return;
+
+    const want = E.target ? 1 : 0;
+    E.alpha += (want - E.alpha) * (1 - Math.exp(-dt / (want ? 110 : 180)));
+    if (E.target) E.shown = E.shown ? lerpQuad(E.shown, E.target, 1 - Math.exp(-dt / 70)) : E.target.map((p) => ({ ...p }));
+    if (!E.shown || E.alpha < 0.01) {
+      if (!E.target) E.shown = null;
+      return;
+    }
+
+    let progress = 0;
+    if (E.frozen) progress = 1;
+    else if (this.autoCapture && E.target && E.bigEnough && E.steadySince && !this.isBusy && this.cameraState === "ready") {
+      progress = clamp((now - E.steadySince) / HOLD_MS, 0, 1);
+      if (progress >= 1 && E.alpha > 0.9) this.capture();
+    }
+    E.progress += (progress - E.progress) * (1 - Math.exp(-dt / (progress > E.progress ? 45 : 120)));
+
+    const vw = v.videoWidth;
+    const vh = v.videoHeight;
+    const k = Math.min(bw / vw, bh / vh);
+    const R = { x: (bw - vw * k) / 2, y: (bh - vh * k) / 2, w: vw * k, h: vh * k };
+    paintLight(
+      ctx,
+      E.shown.map((p) => ({ x: R.x + p.x * k, y: R.y + p.y * k })),
+      R,
+      now,
+      E.alpha,
+      E.progress,
+    );
+  };
+  //#endregion
+
+  //#region Lapisan cahaya — inti tampilan scan
+  /* "Structured light": kertas yang terdeteksi diselimuti cahaya biru
+     dingin, lalu kisi titik cahaya diproyeksikan ke permukaannya lewat
+     homografi — ikut miring dan menempel ke kertas sungguhan, bukan kotak
+     datar di atas video, dan bukan garis scan yang naik-turun.
+       kunci   titik-titik mekar dari tengah kertas, titik sudut masuk besar
+               lalu "mengunci" pas di sudutnya
+       tunggu  denyut cincin cahaya merambat dari tengah ke tepi, berulang
+       tahan   cincin cahaya mengembang dari tengah; bagian yang sudah
+               dilewati jadi bersih dan terang — kertas "terbaca". Itulah
+               progres jepret otomatis, tanpa bar atau cincin terpisah
+       jepret  kilau di kertas, lalu kertas yang sudah lurus terangkat ke
+               posisinya di layar hasil (revealResult)
+     Warna cahayanya pita spektral ungu -> biru -> mint, seperti cahaya yang
+     terurai lensa. Titik dan cincin digambar aditif (lighter) di atas
+     selubung biru, jadi tetap menyala walau kertasnya putih. */
+  const BAND = [
+    [124, 92, 255],
+    [86, 112, 255],
+    [62, 139, 255],
+    [47, 182, 232],
+    [52, 227, 196],
+  ];
+  const bandAt = (t) => {
+    const x = clamp(t, 0, 1) * (BAND.length - 1);
+    const i = Math.min(BAND.length - 2, Math.floor(x));
+    const f = x - i;
+    return BAND[i].map((c, k) => Math.round(c + (BAND[i + 1][k] - c) * f));
+  };
+
+  /* Titik cahaya dirender sekali ke kanvas kecil (sprite), lalu tinggal
+     ditempel — jauh lebih ringan daripada shadowBlur per titik. */
+  const SPRITES = Array.from({ length: 20 }, (_, i) => {
+    const [r, g, b] = bandAt(i / 19);
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = 48;
+    const x = canvas.getContext("2d");
+    const grad = x.createRadialGradient(24, 24, 0, 24, 24, 24);
+    grad.addColorStop(0, "rgba(255,255,255,1)");
+    grad.addColorStop(0.14, `rgba(${r},${g},${b},0.95)`);
+    grad.addColorStop(0.38, `rgba(${r},${g},${b},0.3)`);
+    grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
+    x.fillStyle = grad;
+    x.fillRect(0, 0, 48, 48);
+    return canvas;
+  });
+
+  const NODE = (() => {
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = 64;
+    const x = canvas.getContext("2d");
+    const grad = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grad.addColorStop(0, "rgba(255,255,255,1)");
+    grad.addColorStop(0.12, "rgba(255,255,255,1)");
+    grad.addColorStop(0.2, "rgba(150,190,255,0.85)");
+    grad.addColorStop(0.5, "rgba(62,139,255,0.25)");
+    grad.addColorStop(1, "rgba(62,139,255,0)");
+    x.fillStyle = grad;
+    x.fillRect(0, 0, 64, 64);
+    return canvas;
+  })();
+
+  const paintLight = (ctx, S, R, now, alpha, progress) => {
+    const W = (dist(S[0], S[1]) + dist(S[3], S[2])) / 2;
+    const H = (dist(S[0], S[3]) + dist(S[1], S[2])) / 2;
+    if (W < 4 || H < 4) return;
+    const since = now - E.lockAt;
+    const Hm = squareToQuad(S);
+    const half = Math.hypot(W, H) / 2;
+
+    /* Lingkaran berjari-jari d di permukaan kertas (0 = tengah, 1 = sudut),
+       diproyeksikan ke layar — jadi cincinnya ikut miring bersama kertas. */
+    const onSheet = (u, v) => {
+      const w = Hm[6] * u + Hm[7] * v + 1;
+      return { x: (Hm[0] * u + Hm[1] * v + Hm[2]) / w, y: (Hm[3] * u + Hm[4] * v + Hm[5]) / w };
+    };
+    const ring = (d) => {
+      const pts = [];
+      for (let i = 0; i < 72; i++) {
+        const t = (i / 72) * Math.PI * 2;
+        pts.push(onSheet(0.5 + (Math.cos(t) * d * half) / W, 0.5 + (Math.sin(t) * d * half) / H));
+      }
+      return pts;
+    };
+    const pathPoly = (pts) => {
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+      ctx.closePath();
+    };
+
+    const reveal = REDUCED ? 2 : easeOut(clamp(since / 600, 0, 1)) * 1.3; // titik mekar saat mengunci
+    const front = progress > 0.001 ? progress * 1.08 : 0; // batas bagian yang sudah "terbaca"
+    const wave = REDUCED || progress > 0.02 ? -1 : ((since % 2000) / 2000) * 1.45 - 0.15; // denyut saat menunggu
+
+    // 1. di luar kertas diredupkan, jadi mata langsung tertuju ke kertas
+    ctx.beginPath();
+    ctx.rect(R.x, R.y, R.w, R.h);
+    pathQuad(ctx, S);
+    ctx.fillStyle = `rgba(0,0,0,${0.55 * alpha})`;
+    ctx.fill("evenodd");
+
+    ctx.save();
+    ctx.beginPath();
+    pathQuad(ctx, S);
+    ctx.clip();
+
+    // 2. selubung cahaya biru di bagian kertas yang belum terbaca
+    ctx.globalCompositeOperation = "multiply";
+    ctx.beginPath();
+    pathQuad(ctx, S);
+    if (front > 0.02) pathPoly(ring(Math.min(front, 1.6)));
+    ctx.fillStyle = `rgba(64,76,178,${0.4 * alpha})`;
+    ctx.fill("evenodd");
+
+    // bagian yang sudah terbaca sedikit lebih terang: kertas "dibersihkan"
+    if (front > 0.02) {
+      ctx.globalCompositeOperation = "screen";
+      ctx.beginPath();
+      pathPoly(ring(Math.min(front, 1.6)));
+      ctx.fillStyle = `rgba(255,255,255,${0.2 * alpha})`;
+      ctx.fill();
+    }
+
+    // 3. kisi titik cahaya, dipetakan ke permukaan kertas (aditif)
+    ctx.globalCompositeOperation = "lighter";
+    let gap = clamp(Math.min(W, H) / 18, 7, 14);
+    let nu = Math.max(5, Math.round(W / gap));
+    let nv = Math.max(5, Math.round(H / gap));
+    if (nu * nv > 1800) {
+      const f = Math.sqrt((nu * nv) / 1800);
+      nu = Math.round(nu / f);
+      nv = Math.round(nv / f);
+      gap *= f;
+    }
+    const wc = Hm[6] * 0.5 + Hm[7] * 0.5 + 1;
+    const drift = REDUCED ? 0 : now / 9000;
+    for (let j = 0; j < nv; j++) {
+      const v = (j + 0.5) / nv;
+      for (let i = 0; i < nu; i++) {
+        const u = (i + 0.5) / nu;
+        const d = Math.hypot((u - 0.5) * W, (v - 0.5) * H) / half;
+        if (d > reveal) continue;
+        let a = 0.3;
+        if (reveal - d < 0.14) a *= (reveal - d) / 0.14;
+        if (wave > -1) {
+          const z = (d - wave) / 0.07;
+          a += 0.55 * Math.exp(-z * z);
+        }
+        if (front > 0) {
+          if (d < front - 0.04) a *= 0.12; // sudah terbaca: cahayanya mengendap
+          const z = (d - front) / 0.05;
+          a += 0.9 * Math.exp(-z * z);
+        }
+        // kilau interferensi pelan, supaya kisi terasa seperti cahaya, bukan pola cetak
+        if (!REDUCED) a *= 0.8 + 0.2 * Math.sin(u * 11 + now / 520) * Math.sin(v * 15 - now / 690);
+        a *= alpha;
+        if (a < 0.03) continue;
+        const p = onSheet(u, v);
+        const w = Hm[6] * u + Hm[7] * v + 1;
+        const r = gap * (0.32 + 0.3 * Math.min(1, a)) * (wc / w);
+        let t = (u * 0.55 + v * 0.45 + drift) % 2;
+        if (t > 1) t = 2 - t; // bolak-balik, jadi warnanya tidak pernah "patah"
+        ctx.globalAlpha = a > 1 ? 1 : a;
+        ctx.drawImage(SPRITES[Math.floor(t * (SPRITES.length - 1))], p.x - r, p.y - r, r * 2, r * 2);
+      }
+    }
+    ctx.globalAlpha = 1;
+
+    // 4. cincin cahaya: denyut tipis saat menunggu, garis depan terang saat ditahan
+    const ringD = front > 0 ? front : wave;
+    if (ringD > 0.01 && ringD < 1.45) {
+      const strength = (front > 0 ? 1 : 0.5 * (1 - ringD / 1.45)) * alpha;
+      const pts = ring(ringD);
+      ctx.lineJoin = "round";
+      ctx.strokeStyle = `rgba(62,139,255,${0.32 * strength})`;
+      ctx.lineWidth = 12;
+      ctx.beginPath();
+      pathPoly(pts);
+      ctx.stroke();
+      ctx.strokeStyle = `rgba(170,238,255,${0.95 * strength})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      pathPoly(pts);
+      ctx.stroke();
+    }
+    ctx.globalCompositeOperation = "source-over";
+    ctx.restore();
+
+    // 4. tepi bercahaya dengan pinggiran spektral: ungu di dalam, mint di luar
+    const c = centroid(S);
+    const grow = (q, px) =>
+      q.map((p) => {
+        const dx = p.x - c.x;
+        const dy = p.y - c.y;
+        const l = Math.hypot(dx, dy) || 1;
+        return { x: p.x + (dx / l) * px, y: p.y + (dy / l) * px };
+      });
+    ctx.lineJoin = "round";
+    ctx.save();
+    ctx.shadowColor = `rgba(62,139,255,${0.9 * alpha})`;
+    ctx.shadowBlur = 18 + 12 * progress;
+    ctx.strokeStyle = `rgba(52,227,196,${0.8 * alpha})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    pathQuad(ctx, grow(S, 1.6));
+    ctx.stroke();
+    ctx.restore();
+    ctx.strokeStyle = `rgba(124,92,255,${0.85 * alpha})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    pathQuad(ctx, grow(S, -1.6));
+    ctx.stroke();
+    ctx.strokeStyle = `rgba(255,255,255,${(0.8 + 0.2 * progress) * alpha})`;
+    ctx.lineWidth = 1.25;
+    ctx.beginPath();
+    pathQuad(ctx, S);
+    ctx.stroke();
+
+    // 5. titik sudut: masuk besar, lalu mengunci pas di sudut kertas
+    const lock = REDUCED ? 0 : Math.pow(1 - clamp(since / 460, 0, 1), 3);
+    const nodeR = 14 * (1 + 1.8 * lock);
+    ctx.globalAlpha = alpha;
+    for (const p of S) ctx.drawImage(NODE, p.x - nodeR, p.y - nodeR, nodeR * 2, nodeR * 2);
+    ctx.globalAlpha = 1;
+  };
+  //#endregion
+
+  //#region Jepret + transisi ke hasil
+  const fixedEl = (tag, style) => {
+    const el = document.createElement(tag);
+    Object.assign(el.style, { position: "fixed", inset: "0", pointerEvents: "none", margin: "0" }, style);
+    return el;
+  };
+
+  /* Kilau di permukaan kertas saat jepret. Animasi opacity lewat Web
+     Animations API berjalan di compositor, jadi tetap mulus walaupun thread
+     utama sedang sibuk meluruskan foto. */
+  const flashSheet = (q) => {
+    if (REDUCED || typeof Element.prototype.animate !== "function") return;
+    const poly = `polygon(${q.map((p) => `${p.x.toFixed(1)}px ${p.y.toFixed(1)}px`).join(",")})`;
+    const bloom = fixedEl("div", { zIndex: "2147483000", filter: "blur(18px)" });
+    const tint = document.createElement("div");
+    Object.assign(tint.style, { position: "absolute", inset: "0", clipPath: poly, background: "linear-gradient(135deg, #7c5cff, #3e8bff 50%, #34e3c4)" });
+    bloom.appendChild(tint);
+    const core = fixedEl("div", { zIndex: "2147483001", clipPath: poly, background: "#fff" });
+    document.body.append(bloom, core);
+    const timing = { duration: 640, easing: "cubic-bezier(.2,.8,.2,1)", fill: "forwards" };
+    bloom.animate([{ opacity: 0 }, { opacity: 0.85, offset: 0.16 }, { opacity: 0 }], timing);
+    const done = () => {
+      bloom.remove();
+      core.remove();
+    };
+    core.animate([{ opacity: 0 }, { opacity: 0.9, offset: 0.12 }, { opacity: 0 }], timing).finished.then(done, done);
+  };
+
+  /* Posisi frame video di layar (object-fit: contain). */
+  const viewOf = (stage, v) => {
+    if (!stage || !v?.videoWidth) return null;
+    const r = stage.getBoundingClientRect();
+    const k = Math.min(r.width / v.videoWidth, r.height / v.videoHeight);
+    return { x: r.left + (r.width - v.videoWidth * k) / 2, y: r.top + (r.height - v.videoHeight * k) / 2, w: v.videoWidth * k, h: v.videoHeight * k, k };
+  };
+
+  this.capture = async () => {
+    if (this.isBusy || this.cameraState !== "ready" || !E.video?.videoWidth) return;
+    const v = E.video;
+    ui(() => {
+      this.isBusy = true;
+      this.hint = this.copy.hintWorking;
+    });
+    buzz(18);
+
+    const still = document.createElement("canvas");
+    still.width = v.videoWidth;
+    still.height = v.videoHeight;
+    still.getContext("2d", { willReadFrequently: true }).drawImage(v, 0, 0);
+    try {
+      v.pause();
+    } catch {}
+    E.frozen = true;
+
+    const view = viewOf(document.getElementById("scnStage"), v);
+    const live = E.target ? E.target.map((p) => ({ ...p })) : null;
+    if (live && view) flashSheet(live.map((p) => ({ x: view.x + p.x * view.k, y: view.y + p.y * view.k })));
+    /* Selama foto diproses, cahayanya "bernapas" (opacity di compositor). */
+    E.layer?.animate?.([{ opacity: 1 }, { opacity: 0.55 }, { opacity: 1 }], { duration: 900, iterations: Infinity, easing: "ease-in-out" });
+    await nextFrames(2);
+
+    let corners = (await detectorReady(4000)) ? await preciseCorners(still) : null;
+    if (!corners && live) corners = refineCorners(still, live);
+    E.still = still;
+    E.corners = corners || insetQuad(still.width, still.height);
+    E.rotation = 0;
+    E.warped = null;
+    E.cache = {};
+    E.cleanData = null;
+    ui(() => (this.filter = DEFAULT_FILTER));
+
+    /* Kertas tidak ketemu sama sekali: langsung ke atur sudut. */
+    if (!corners && this.canAdjust) {
+      stopCamera();
+      ui(() => (this.isBusy = false));
+      await this.openAdjust();
+      return;
+    }
+
+    await buildResult();
+    const quad = view ? E.corners.map((p) => ({ x: view.x + p.x * view.k, y: view.y + p.y * view.k })) : null;
+    await revealResult(view, quad);
+    ui(() => (this.isBusy = false));
+  };
+
+  /* Momen utama: kertas yang sudah lurus muncul TEPAT di atas kertas di foto
+     (dipetakan matrix3d), lalu terangkat dan mendarat di posisinya di layar
+     hasil. Lapisan ini dibuat JS di <body>, di luar layar *ngIf, dan
+     digerakkan Web Animations API. */
+  const revealResult = async (view, quad) => {
+    const animate = !REDUCED && view && quad && typeof Element.prototype.animate === "function";
+    let layer = null;
+    let shade = null;
+    let photo = null;
+    let sheet = null;
+
+    if (animate) {
+      layer = fixedEl("div", { zIndex: "2147482000" });
+      shade = document.createElement("div");
+      Object.assign(shade.style, { position: "absolute", inset: "0", background: "#000" });
+
+      photo = document.createElement("canvas");
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      photo.width = Math.max(1, Math.round(view.w * dpr));
+      photo.height = Math.max(1, Math.round(view.h * dpr));
+      const px = photo.getContext("2d");
+      px.drawImage(E.still, 0, 0, photo.width, photo.height);
+      px.beginPath();
+      px.rect(0, 0, photo.width, photo.height);
+      pathQuad(px, E.corners.map((p) => ({ x: p.x * view.k * dpr, y: p.y * view.k * dpr })));
+      px.fillStyle = "rgba(0,0,0,.52)";
+      px.fill("evenodd");
+      Object.assign(photo.style, { position: "absolute", left: `${view.x}px`, top: `${view.y}px`, width: `${view.w}px`, height: `${view.h}px` });
+
+      sheet = new Image();
+      sheet.src = this.resultUrl;
+      try {
+        await sheet.decode();
+      } catch {}
+      const sw = sheet.naturalWidth || 1;
+      const sh = sheet.naturalHeight || 1;
+      Object.assign(sheet.style, {
+        position: "absolute",
+        left: "0",
+        top: "0",
+        width: `${sw}px`,
+        height: `${sh}px`,
+        maxWidth: "none",
+        transformOrigin: "0 0",
+        transform: quadMatrix(quad, sw, sh),
+        opacity: "0",
+        boxShadow: "0 40px 90px -30px rgba(0,0,0,.9)",
+      });
+      layer.append(shade, photo, sheet);
+      document.body.appendChild(layer);
+    }
+
+    stopCamera();
+    ui(() => {
+      this.revealing = Boolean(animate);
+      this.screen = "result";
+    });
+    if (!animate) return;
+
+    const img = await waitFor("#scnResultImg", true);
+    try {
+      await img?.decode?.();
+    } catch {}
+    await nextFrame();
+    const box = img?.getBoundingClientRect();
+    if (!box || !box.width) {
+      layer.remove();
+      ui(() => (this.revealing = false));
+      return;
+    }
+
+    const to = [
+      { x: box.left, y: box.top },
+      { x: box.right, y: box.top },
+      { x: box.right, y: box.bottom },
+      { x: box.left, y: box.bottom },
+    ];
+    const sw = sheet.naturalWidth || 1;
+    const sh = sheet.naturalHeight || 1;
+    const keys = [];
+    for (let i = 0; i <= 30; i++) {
+      const t = i / 30;
+      const e = easeInOut(t);
+      keys.push({ offset: t, transform: quadMatrix(lerpQuad(quad, to, e), sw, sh) });
+    }
+    const D = 900;
+    sheet.animate([{ opacity: 0 }, { opacity: 1, offset: 0.2 }, { opacity: 1 }], { duration: D, fill: "forwards" });
+    const move = sheet.animate(keys, { duration: D, fill: "forwards" });
+    photo.animate([{ opacity: 1, transform: "scale(1)" }, { opacity: 0, transform: "scale(.96)" }], { duration: D * 0.7, easing: "cubic-bezier(.4,0,.2,1)", fill: "forwards" });
+    shade.animate([{ opacity: 1 }, { opacity: 1, offset: 0.6 }, { opacity: 0 }], { duration: D, fill: "forwards" });
+    try {
+      await move.finished;
+    } catch {}
+    /* Dua-duanya dimatikan sekaligus: kalau isBusy masih menyala saat gambar
+       aslinya muncul, gambar itu sempat redup sekejap. */
+    ui(() => {
+      this.revealing = false;
+      this.isBusy = false;
+    });
+    await nextFrames(2);
+    layer.remove();
+  };
+  //#endregion
+
+  //#region Meluruskan perspektif
+  /* Memetakan segi empat q di foto ke persegi panjang lurus (bilinear).
+     Ukuran hasil mengikuti resolusi asli kertas di foto, dengan rasio dari
+     estimateRatio atau DOC_RATIO. */
+  const warp = (src, q) => {
+    let ratio = estimateRatio(q, src.width, src.height);
+    if (typeof DOC_RATIO === "number") ratio = ratio >= 1 === DOC_RATIO >= 1 ? DOC_RATIO : 1 / DOC_RATIO;
+    const nativeH = Math.max(dist(q[0], q[3]), dist(q[1], q[2]));
+    const nativeW = Math.max(dist(q[0], q[1]), dist(q[3], q[2]));
+    let h = nativeH;
+    let w = h * ratio;
+    if (w < nativeW) {
+      w = nativeW;
+      h = w / ratio;
+    }
+    /* Piksel paling tepi selalu campuran kertas + latar; pangkas sedikit. */
+    const eu = Math.min(0.02, EDGE_TRIM_PX / Math.max(1, nativeW));
+    const ev = Math.min(0.02, EDGE_TRIM_PX / Math.max(1, nativeH));
+    const scale = Math.min(1, OUTPUT_MAX / Math.max(w, h));
+    const W = Math.max(8, Math.round(w * scale));
+    const H = Math.max(8, Math.round(h * scale));
+
+    /* Hasil jauh lebih kecil dari sumbernya: kecilkan sumber dulu dengan
+       drawImage supaya tidak bergerigi. */
+    const pre = scale < 0.75 ? scale * 1.25 : 1;
+    const source = pre < 1 ? drawScaled(src, pre) : src;
+    const quad = pre < 1 ? q.map((p) => ({ x: p.x * pre, y: p.y * pre })) : q;
+    const sw = source.width;
+    const sh = source.height;
+    const sd = source.getContext("2d", { willReadFrequently: true }).getImageData(0, 0, sw, sh).data;
+
+    const out = document.createElement("canvas");
+    out.width = W;
+    out.height = H;
+    const octx = out.getContext("2d", { willReadFrequently: true });
+    const img = octx.createImageData(W, H);
+    const od = img.data;
+    const [a, b, c, d, e, f, g, hh] = squareToQuad(quad);
+    const maxX = sw - 1.001;
+    const maxY = sh - 1.001;
+    const row = sw << 2;
+    for (let y = 0; y < H; y++) {
+      const v = ev + ((y + 0.5) / H) * (1 - 2 * ev);
+      const bx = b * v + c;
+      const ey = e * v + f;
+      const hv = hh * v + 1;
+      let o = y * W * 4;
+      for (let x = 0; x < W; x++) {
+        const u = eu + ((x + 0.5) / W) * (1 - 2 * eu);
+        const den = g * u + hv;
+        let sx = (a * u + bx) / den - 0.5;
+        let sy = (d * u + ey) / den - 0.5;
+        sx = sx < 0 ? 0 : sx > maxX ? maxX : sx;
+        sy = sy < 0 ? 0 : sy > maxY ? maxY : sy;
+        const x0 = sx | 0;
+        const y0 = sy | 0;
+        const fx = sx - x0;
+        const fy = sy - y0;
+        const i0 = (y0 * sw + x0) << 2;
+        const i1 = i0 + row;
+        const w00 = (1 - fx) * (1 - fy);
+        const w10 = fx * (1 - fy);
+        const w01 = (1 - fx) * fy;
+        const w11 = fx * fy;
+        od[o] = sd[i0] * w00 + sd[i0 + 4] * w10 + sd[i1] * w01 + sd[i1 + 4] * w11;
+        od[o + 1] = sd[i0 + 1] * w00 + sd[i0 + 5] * w10 + sd[i1 + 1] * w01 + sd[i1 + 5] * w11;
+        od[o + 2] = sd[i0 + 2] * w00 + sd[i0 + 6] * w10 + sd[i1 + 2] * w01 + sd[i1 + 6] * w11;
+        od[o + 3] = 255;
+        o += 4;
+      }
+    }
+    octx.putImageData(img, 0, 0);
+    return out;
+  };
+  //#endregion
+
+  //#region Filter hasil
+  /* "Bersih": warna kertas diperkirakan per petak (rata-rata 15% piksel
+     paling terang), lalu tiap piksel dibagi warna kertas di bawahnya.
+     Bayangan, cahaya miring, dan warna lampu hilang; kertas jadi putih,
+     tinta tetap berwarna. */
+  const CLEAN_LUT = (() => {
+    const lut = new Uint8ClampedArray(1024);
+    for (let i = 0; i < 1024; i++) {
+      const t = clamp((i / 768 - 0.1) / (0.88 - 0.1), 0, 1);
+      lut[i] = Math.round(255 * Math.pow(t, 1.18));
+    }
+    return lut;
+  })();
+
+  const BW_LUT = (() => {
+    const lut = new Uint8ClampedArray(256);
+    for (let i = 0; i < 256; i++) {
+      const t = clamp((i - 110) / 90, 0, 1);
+      lut[i] = Math.round(255 * t * t * (3 - 2 * t));
+    }
+    return lut;
+  })();
+
+  const paperMap = (d, W, H) => {
+    const cell = Math.max(W, H) / 40;
+    const gw = Math.max(2, Math.round(W / cell));
+    const gh = Math.max(2, Math.round(H / cell));
+    const cw = W / gw;
+    const ch = H / gh;
+    const step = Math.max(1, Math.floor(Math.min(cw, ch) / 10));
+    let bg = new Float32Array(gw * gh * 3);
+    const hist = new Uint32Array(64);
+    for (let gy = 0; gy < gh; gy++) {
+      const y0 = Math.floor(gy * ch);
+      const y1 = Math.min(H, Math.floor((gy + 1) * ch));
+      for (let gx = 0; gx < gw; gx++) {
+        const x0 = Math.floor(gx * cw);
+        const x1 = Math.min(W, Math.floor((gx + 1) * cw));
+        hist.fill(0);
+        let n = 0;
+        for (let y = y0; y < y1; y += step) {
+          for (let x = x0; x < x1; x += step) {
+            const i = (y * W + x) << 2;
+            hist[(d[i] * 77 + d[i + 1] * 150 + d[i + 2] * 29) >> 10]++;
+            n++;
+          }
+        }
+        const want = Math.max(1, n * 0.15);
+        let bin = 63;
+        for (let acc = 0; bin > 0 && acc + hist[bin] < want; bin--) acc += hist[bin];
+        let r = 0;
+        let g = 0;
+        let b = 0;
+        let m = 0;
+        for (let y = y0; y < y1; y += step) {
+          for (let x = x0; x < x1; x += step) {
+            const i = (y * W + x) << 2;
+            if ((d[i] * 77 + d[i + 1] * 150 + d[i + 2] * 29) >> 10 >= bin) {
+              r += d[i];
+              g += d[i + 1];
+              b += d[i + 2];
+              m++;
+            }
+          }
+        }
+        const o = (gy * gw + gx) * 3;
+        bg[o] = r / Math.max(1, m);
+        bg[o + 1] = g / Math.max(1, m);
+        bg[o + 2] = b / Math.max(1, m);
+      }
+    }
+
+    const lum = (arr, o) => arr[o] * 0.3 + arr[o + 1] * 0.59 + arr[o + 2] * 0.11;
+    const at = (gx, gy) => (clamp(gy, 0, gh - 1) * gw + clamp(gx, 0, gw - 1)) * 3;
+
+    /* Area luas penuh tinta (gambar yang diarsir) jangan ikut dianggap
+       kertas: petak yang jauh lebih gelap dari kertas pada umumnya diganti
+       warna kertas umum. */
+    const lums = [];
+    for (let o = 0; o < bg.length; o += 3) lums.push(lum(bg, o));
+    lums.sort((x, y) => x - y);
+    const paperLum = lums[Math.floor(lums.length * 0.8)] || 255;
+    let pr = 0;
+    let pg = 0;
+    let pb = 0;
+    let pn = 0;
+    for (let o = 0; o < bg.length; o += 3) {
+      if (lum(bg, o) >= paperLum * 0.95) {
+        pr += bg[o];
+        pg += bg[o + 1];
+        pb += bg[o + 2];
+        pn++;
+      }
+    }
+    pn = Math.max(1, pn);
+    for (let o = 0; o < bg.length; o += 3) {
+      if (lum(bg, o) < paperLum * 0.6) {
+        bg[o] = pr / pn;
+        bg[o + 1] = pg / pn;
+        bg[o + 2] = pb / pn;
+      }
+    }
+
+    /* Petak bertinta sedang: ambil tetangga paling terang, lalu haluskan. */
+    let next = new Float32Array(bg.length);
+    for (let gy = 0; gy < gh; gy++) {
+      for (let gx = 0; gx < gw; gx++) {
+        let best = -1;
+        let pick = 0;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const o = at(gx + dx, gy + dy);
+            const l = lum(bg, o);
+            if (l > best) {
+              best = l;
+              pick = o;
+            }
+          }
+        }
+        const o = (gy * gw + gx) * 3;
+        next[o] = bg[pick];
+        next[o + 1] = bg[pick + 1];
+        next[o + 2] = bg[pick + 2];
+      }
+    }
+    bg = next;
+    for (let pass = 0; pass < 2; pass++) {
+      next = new Float32Array(bg.length);
+      for (let gy = 0; gy < gh; gy++) {
+        for (let gx = 0; gx < gw; gx++) {
+          const o = (gy * gw + gx) * 3;
+          for (let k = 0; k < 3; k++) {
+            let s = 0;
+            for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) s += bg[at(gx + dx, gy + dy) + k];
+            next[o + k] = s / 9;
+          }
+        }
+      }
+      bg = next;
+    }
+    return { bg, gw, gh };
+  };
+
+  const cleanPixels = (src) => {
+    const W = src.width;
+    const H = src.height;
+    const d = src.getContext("2d", { willReadFrequently: true }).getImageData(0, 0, W, H).data;
+    const { bg, gw, gh } = paperMap(d, W, H);
+    const out = new ImageData(W, H);
+    const o = out.data;
+    for (let y = 0; y < H; y++) {
+      const gy = clamp(((y + 0.5) / H) * gh - 0.5, 0, gh - 1.001);
+      const y0 = gy | 0;
+      const fy = gy - y0;
+      const r0 = y0 * gw;
+      const r1 = Math.min(gh - 1, y0 + 1) * gw;
+      for (let x = 0; x < W; x++) {
+        const gx = clamp(((x + 0.5) / W) * gw - 0.5, 0, gw - 1.001);
+        const x0 = gx | 0;
+        const fx = gx - x0;
+        const x1 = Math.min(gw - 1, x0 + 1);
+        const p00 = (r0 + x0) * 3;
+        const p10 = (r0 + x1) * 3;
+        const p01 = (r1 + x0) * 3;
+        const p11 = (r1 + x1) * 3;
+        const w00 = (1 - fx) * (1 - fy);
+        const w10 = fx * (1 - fy);
+        const w01 = (1 - fx) * fy;
+        const w11 = fx * fy;
+        const i = (y * W + x) << 2;
+        const r = CLEAN_LUT[Math.min(1023, ((d[i] / (bg[p00] * w00 + bg[p10] * w10 + bg[p01] * w01 + bg[p11] * w11 + 1)) * 768) | 0)];
+        const g = CLEAN_LUT[Math.min(1023, ((d[i + 1] / (bg[p00 + 1] * w00 + bg[p10 + 1] * w10 + bg[p01 + 1] * w01 + bg[p11 + 1] * w11 + 1)) * 768) | 0)];
+        const b = CLEAN_LUT[Math.min(1023, ((d[i + 2] / (bg[p00 + 2] * w00 + bg[p10 + 2] * w10 + bg[p01 + 2] * w01 + bg[p11 + 2] * w11 + 1)) * 768) | 0)];
+        const l = (r * 77 + g * 150 + b * 29) >> 8;
+        o[i] = l + (r - l) * 1.15;
+        o[i + 1] = l + (g - l) * 1.15;
+        o[i + 2] = l + (b - l) * 1.15;
+        o[i + 3] = 255;
+      }
+    }
+    return out;
+  };
+
+  const toCanvas = (imageData) => {
+    const canvas = document.createElement("canvas");
+    canvas.width = imageData.width;
+    canvas.height = imageData.height;
+    canvas.getContext("2d").putImageData(imageData, 0, 0);
+    return canvas;
+  };
+
+  const filtered = (mode) => {
+    if (mode === "original") return E.warped;
+    if (E.cache[mode]) return E.cache[mode];
+    if (!E.cleanData) E.cleanData = cleanPixels(E.warped);
+    if (mode === "clean") return (E.cache.clean = toCanvas(E.cleanData));
+    const bw = new ImageData(new Uint8ClampedArray(E.cleanData.data), E.cleanData.width, E.cleanData.height);
+    const d = bw.data;
+    for (let i = 0; i < d.length; i += 4) d[i] = d[i + 1] = d[i + 2] = BW_LUT[(d[i] * 77 + d[i + 1] * 150 + d[i + 2] * 29) >> 8];
+    return (E.cache.bw = toCanvas(bw));
+  };
+
+  const rotated = (src, deg) => {
+    if (!deg) return src;
+    const canvas = document.createElement("canvas");
+    const swap = deg % 180 !== 0;
+    canvas.width = swap ? src.height : src.width;
+    canvas.height = swap ? src.width : src.height;
+    const ctx = canvas.getContext("2d");
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+    ctx.rotate((deg * Math.PI) / 180);
+    ctx.drawImage(src, -src.width / 2, -src.height / 2);
+    return canvas;
+  };
+
+  const buildResult = async () => {
+    if (!E.warped) {
+      E.warped = warp(E.still, E.corners);
+      E.cache = {};
+      E.cleanData = null;
+    }
+    E.out = rotated(filtered(this.filter), E.rotation);
+    const url = E.out.toDataURL("image/jpeg", JPEG_QUALITY);
+    ui(() => (this.resultUrl = url));
+    if (typeof ON_SCAN_READY === "function") {
+      try {
+        ON_SCAN_READY(E.out, url);
+      } catch (err) {
+        console.error("[scan] ON_SCAN_READY", err);
+      }
+    }
+  };
+  //#endregion
+
+  //#region Layar hasil
+  const busyRun = async (job) => {
+    if (this.isBusy || !E.still) return;
+    ui(() => (this.isBusy = true));
+    await nextFrames(2); // biarkan tampilan "sibuk" tergambar dulu
+    try {
+      await job();
+    } catch (err) {
+      console.error("[scan]", err);
+    }
+    ui(() => (this.isBusy = false));
+  };
+
+  this.setFilter = (key) => {
+    if (key === this.filter || this.isBusy) return;
+    this.filter = key;
+    busyRun(buildResult);
+  };
+
+  this.rotate = () =>
+    busyRun(async () => {
+      E.rotation = (E.rotation + 90) % 360;
+      await buildResult();
+    });
+
+  this.save = async () => {
+    if (!E.out) return;
+    const blob = await new Promise((resolve) => E.out.toBlob(resolve, "image/jpeg", JPEG_QUALITY));
+    if (!blob) return;
+    const pad = (n) => String(n).padStart(2, "0");
+    const now = new Date();
+    const name = `scan-${pad(now.getFullYear() % 100)}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}.jpg`;
+    const file = new File([blob], name, { type: "image/jpeg" });
+
+    /* Di ponsel, lembar bagikan memberi pilihan "Simpan gambar" ke galeri. */
+    if (window.matchMedia?.("(pointer: coarse)").matches && navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file] });
+        return;
+      } catch (err) {
+        if (err?.name === "AbortError") return;
+      }
+    }
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = name;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    showToast(this.copy.saved);
+  };
+
+  this.rescan = () => {
+    E.editor?.destroy();
+    Object.assign(E, { editor: null, still: null, corners: null, warped: null, cleanData: null, cache: {}, rotation: 0, out: null });
+    ui(() => {
+      this.screen = "camera";
+      this.resultUrl = "";
+      this.isBusy = false;
+      this.revealing = false;
+    });
+    this.startCamera();
+  };
+  //#endregion
+
+  //#region Atur sudut
+  const mountEditor = (host, corners) => {
+    E.editor?.destroy();
+    E.editor = E.mod.createCornerEditor({
+      container: host,
+      image: E.still,
+      corners: toCorners(corners),
+      magnifier: { enabled: true, zoom: 2.5, size: 120, borderColor: "#ffffff", crosshairColor: "#3e8bff" },
+      toolbar: { enabled: false },
+      handleHitArea: 48,
+      theme: {
+        accent: "#3e8bff",
+        mask: "rgba(0,0,0,0.55)",
+        edgeColor: "#ffffff",
+        edgeWidth: 2,
+        handleColor: "#ffffff",
+        handleRingColor: "#3e8bff",
+        handleSize: 20,
+      },
+    });
+  };
+
+  this.openAdjust = async () => {
+    if (!E.mod || !E.still) return;
+    ui(() => (this.screen = "adjust"));
+    const host = await waitFor("#scnEditor", true);
+    if (!host || this.screen !== "adjust") return;
+    mountEditor(host, E.corners);
+  };
+
+  this.applyAdjust = async () => {
+    const c = E.editor?.getCorners?.();
+    E.editor?.destroy();
+    E.editor = null;
+    if (c) {
+      E.corners = orderQuad(ORDER.map((key) => ({ x: c[key].x, y: c[key].y })));
+      E.warped = null;
+    }
+    ui(() => (this.screen = "result"));
+    await busyRun(buildResult);
+  };
+
+  this.cancelAdjust = () => {
+    E.editor?.destroy();
+    E.editor = null;
+    if (!this.resultUrl) {
+      this.rescan();
+      return;
+    }
+    ui(() => (this.screen = "result"));
+  };
+
+  /* Editor scanic tidak ikut berubah ukuran sendiri: pasang ulang saat
+     layar diputar / jendela diubah, sudut yang sudah digeser tetap dipakai. */
+  let resizeTimer = 0;
+  const onResize = () => {
+    if (!alive()) {
+      window.removeEventListener("resize", onResize);
+      return;
+    }
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      if (this.screen !== "adjust" || !E.editor) return;
+      const host = document.getElementById("scnEditor");
+      if (!host) return;
+      const c = E.editor.getCorners();
+      mountEditor(host, ORDER.map((key) => c[key]));
+    }, 180);
+  };
+  window.addEventListener("resize", onResize);
+  //#endregion
+
+  //#region Unggah foto
+  const fileToCanvas = async (file) => {
+    let src = null;
+    try {
+      src = await createImageBitmap(file, { imageOrientation: "from-image" });
+    } catch {
+      const url = URL.createObjectURL(file);
+      try {
+        src = await loadImage(url);
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    }
+    const w = src.width || src.naturalWidth;
+    const h = src.height || src.naturalHeight;
+    const canvas = drawScaled(src, Math.min(1, STILL_MAX / Math.max(w, h)));
+    src.close?.();
+    return canvas;
+  };
+
+  this.onUpload = async (event) => {
+    const input = event?.target;
+    const file = input?.files?.[0];
+    if (input) input.value = "";
+    if (!file || this.isBusy) return;
+    ui(() => (this.isBusy = true));
+    let still = null;
+    try {
+      still = await fileToCanvas(file);
+    } catch (err) {
+      console.error("[scan] unggah", err);
+    }
+    if (!still) {
+      ui(() => (this.isBusy = false));
+      return;
+    }
+    stopCamera();
+    await loadEngine();
+    const corners = (await detectorReady(8000)) ? await preciseCorners(still) : null;
+    Object.assign(E, { still, corners: corners || insetQuad(still.width, still.height), rotation: 0, warped: null, cleanData: null, cache: {} });
+    ui(() => (this.filter = DEFAULT_FILTER));
+    if (!corners && E.mod) {
+      ui(() => (this.isBusy = false));
+      await this.openAdjust();
+      return;
+    }
+    await buildResult();
+    ui(() => {
+      this.screen = "result";
+      this.isBusy = false;
+    });
+  };
+  //#endregion
+
+  console.info(`[scan] build ${BUILD}`);
+  window.__SCAN_BUILD = BUILD;
+  window.__SCAN = E; // untuk diagnosa dari console
+
+  startWorker();
+  loadEngine().then(() => {
+    if (DW.dead) initMainDetector();
+  });
+  /* Ditunda satu tick supaya template sudah dirender sebelum kamera minta
+     elemen <video>-nya. */
+  setTimeout(() => this.startCamera(), 0);
+};
+
+this.pageMain();
+</script>
